@@ -102,7 +102,7 @@ $feedTrend = computed(function () {
 
         return [
             'label' => $day->format('D'),
-            'count' => $entries->filter(fn ($entry) => $entry->fed_at->isSameDay($day))->count(),
+            'oz' => (float) $entries->filter(fn ($entry) => $entry->fed_at->isSameDay($day))->sum('amount_oz'),
         ];
     })->values();
 });
@@ -329,9 +329,9 @@ $saveDiaper = function () {
 
                 <x-card class="p-6">
                     <p class="font-semibold text-gray-800 mb-1">Feeding Activity</p>
-                    <p class="text-xs text-gray-400 mb-3">Last 7 days</p>
+                    <p class="text-xs text-gray-400 mb-3">Bottle ounces · Last 7 days</p>
                     <div class="h-[1.375rem] mb-2"></div>
-                    <div wire:key="feed-trend-{{ $feedTrend->pluck('count')->sum() }}" style="height: 160px;">
+                    <div wire:key="feed-trend-{{ $feedTrend->pluck('oz')->sum() }}" style="height: 160px;">
                         <canvas
                             x-data
                             x-init="new window.Chart($el.getContext('2d'), {
@@ -339,16 +339,22 @@ $saveDiaper = function () {
                                 data: {
                                     labels: {{ Js::from($feedTrend->pluck('label')) }},
                                     datasets: [
-                                        { label: 'Feeds', data: {{ Js::from($feedTrend->pluck('count')) }}, backgroundColor: '#f59e0b', borderRadius: 4, maxBarThickness: 24 },
+                                        { label: 'oz', data: {{ Js::from($feedTrend->pluck('oz')) }}, backgroundColor: '#f59e0b', borderRadius: 4, maxBarThickness: 24 },
                                     ],
                                 },
                                 options: {
                                     responsive: true,
                                     maintainAspectRatio: false,
-                                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1f2937', padding: 8, cornerRadius: 8 } },
+                                    plugins: {
+                                        legend: { display: false },
+                                        tooltip: {
+                                            backgroundColor: '#1f2937', padding: 8, cornerRadius: 8,
+                                            callbacks: { label: (ctx) => ctx.parsed.y + ' oz' },
+                                        },
+                                    },
                                     scales: {
                                         x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } },
-                                        y: { beginAtZero: true, ticks: { precision: 0, color: '#9ca3af', font: { size: 11 } }, grid: { color: '#f3f4f6' } },
+                                        y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => v + ' oz' }, grid: { color: '#f3f4f6' } },
                                     },
                                 },
                             })"
