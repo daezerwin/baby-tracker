@@ -235,10 +235,12 @@ $saveDiaper = function ($occurredAtUtc = null) {
 
                 <x-stat-card label="Last Feed" color="amber"
                     :value="$lastFeed ? $lastFeed->fed_at->diffForHumans() : '—'"
-                    :meta="$lastFeed ? ucfirst($lastFeed->type).' · '.$lastFeed->fed_at->format('M j, g:i A') : 'Not logged yet'" />
+                    :meta="$lastFeed ? ucfirst($lastFeed->type).' · '.$lastFeed->fed_at->format('M j, g:i A') : 'Not logged yet'"
+                    :link="route('babies.feeds.index', $baby)" link-label="View all feeds" />
                 <x-stat-card label="Last Diaper" color="emerald"
                     :value="$lastDiaper ? $lastDiaper->occurred_at->diffForHumans() : '—'"
-                    :meta="$lastDiaper ? $lastDiaper->label().' · '.$lastDiaper->occurred_at->format('M j, g:i A') : 'Not logged yet'" />
+                    :meta="$lastDiaper ? $lastDiaper->label().' · '.$lastDiaper->occurred_at->format('M j, g:i A') : 'Not logged yet'"
+                    :link="route('babies.diapers.index', $baby)" link-label="View all diapers" />
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">

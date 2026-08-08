@@ -66,6 +66,40 @@ class BabyTrackerFlowTest extends TestCase
             ->assertDontSee("Parent's Guide", false);
     }
 
+    public function test_dashboard_last_feed_and_diaper_cards_link_to_full_lists(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+        session(['current_baby_id' => $baby->id]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee(route('babies.feeds.index', $baby), false)
+            ->assertSee(route('babies.diapers.index', $baby), false);
+    }
+
+    public function test_feed_and_diaper_lists_group_entries_by_date(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $baby->feedEntries()->create(['type' => 'bottle', 'fed_at' => now(), 'amount_oz' => 4]);
+        $baby->feedEntries()->create(['type' => 'bottle', 'fed_at' => now()->subDay(), 'amount_oz' => 3]);
+        $baby->diaperEntries()->create(['is_wet' => true, 'is_dirty' => false, 'occurred_at' => now()]);
+        $baby->diaperEntries()->create(['is_wet' => false, 'is_dirty' => true, 'occurred_at' => now()->subDay()]);
+
+        $this->actingAs($user);
+
+        $this->get(route('babies.feeds.index', $baby))
+            ->assertOk()
+            ->assertSeeInOrder(['Today', 'Yesterday']);
+
+        $this->get(route('babies.diapers.index', $baby))
+            ->assertOk()
+            ->assertSeeInOrder(['Today', 'Yesterday']);
+    }
+
     public function test_dashboard_quick_add_feed_and_diaper_save_notes(): void
     {
         $user = User::factory()->create();

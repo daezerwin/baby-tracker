@@ -1,4 +1,4 @@
-@props(['label', 'value', 'meta' => null, 'color' => 'blue', 'icon' => null])
+@props(['label', 'value', 'meta' => null, 'color' => 'blue', 'icon' => null, 'link' => null, 'linkLabel' => 'View all'])
 
 @php
     $colors = [
@@ -22,6 +22,9 @@
         <p class="text-2xl font-semibold text-gray-800 truncate mt-0.5">{{ $value }}</p>
         @if ($meta)
             <p class="text-sm text-gray-400 mt-1">{{ $meta }}</p>
+        @endif
+        @if ($link)
+            <a href="{{ $link }}" wire:navigate class="text-sm text-blue-600 hover:text-blue-700 mt-1 inline-block">{{ $linkLabel }} →</a>
         @endif
     </div>
 </x-card>
