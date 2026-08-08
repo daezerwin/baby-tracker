@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1: build frontend assets (Tailwind + Chart.js via Vite)
 # ---------------------------------------------------------------------------
-FROM node:20-alpine AS frontend
+FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 # Stage 2: install PHP dependencies
 # ---------------------------------------------------------------------------
-FROM composer:2 AS vendor
+FROM --platform=$BUILDPLATFORM composer:2 AS vendor
 
 WORKDIR /app
 
