@@ -1,0 +1,310 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Baby;
+use App\Models\DiaperEntry;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
+
+class BabyTrackerFlowTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_dashboard_shows_empty_state_with_no_babies(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('add your baby');
+    }
+
+    public function test_dashboard_renders_with_feed_and_diaper_trend_charts(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $baby->diaperEntries()->create(['is_wet' => true, 'is_dirty' => false, 'occurred_at' => now()]);
+        $baby->diaperEntries()->create(['is_wet' => false, 'is_dirty' => true, 'occurred_at' => now()->subDay()]);
+        $baby->feedEntries()->create(['type' => 'bottle', 'fed_at' => now(), 'amount_oz' => 3]);
+
+        session(['current_baby_id' => $baby->id]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Diaper Activity')
+            ->assertSee('Feeding Activity')
+            ->assertSee($baby->name);
+    }
+
+    public function test_dashboard_shows_weight_chart_with_median_status_and_no_guide_card(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create([
+            'sex' => 'male',
+            'date_of_birth' => now()->subMonths(12),
+        ]);
+
+        $baby->weightEntries()->create(['weight_kg' => 9.5, 'measured_at' => now()->subMonth()]);
+        $baby->weightEntries()->create(['weight_kg' => 9.6, 'measured_at' => now()]);
+
+        session(['current_baby_id' => $baby->id]);
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertOk()
+            ->assertSee('Growth Chart')
+            ->assertSee('Normal range')
+            ->assertSee('Typical median')
+            ->assertDontSee("Parent's Guide", false);
+    }
+
+    public function test_user_can_create_a_baby(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('babies.store'), [
+            'name' => 'Test Baby',
+            'sex' => 'female',
+            'date_of_birth' => now()->subMonths(4)->format('Y-m-d'),
+        ]);
+
+        $baby = Baby::first();
+        $response->assertRedirect(route('babies.show', $baby));
+        $this->assertSame($user->id, $baby->user_id);
+    }
+
+    public function test_user_cannot_view_another_users_baby(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $baby = Baby::factory()->for($owner)->create();
+
+        $this->actingAs($intruder)
+            ->get(route('babies.show', $baby))
+            ->assertForbidden();
+    }
+
+    public function test_user_can_log_a_weight_feed_diaper_sleep_and_milestone(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user);
+
+        $this->post(route('babies.weights.store', $baby), [
+            'weight_kg' => 5.4,
+            'measured_at' => now(),
+        ])->assertRedirect(route('babies.weights.index', $baby));
+
+        $this->post(route('babies.feeds.store', $baby), [
+            'type' => 'bottle',
+            'fed_at' => now(),
+            'amount_oz' => 4.5,
+        ])->assertRedirect(route('babies.feeds.index', $baby));
+
+        $this->post(route('babies.diapers.store', $baby), [
+            'is_wet' => '1',
+            'occurred_at' => now(),
+        ])->assertRedirect(route('babies.diapers.index', $baby));
+
+        $this->post(route('babies.sleeps.store', $baby), [
+            'started_at' => now()->subHour(),
+            'ended_at' => now(),
+        ])->assertRedirect(route('babies.sleeps.index', $baby));
+
+        $this->post(route('babies.milestones.store', $baby), [
+            'title' => 'First smile',
+            'achieved_on' => now()->format('Y-m-d'),
+        ])->assertRedirect(route('babies.milestones.index', $baby));
+
+        $this->assertDatabaseCount('weight_entries', 1);
+        $this->assertDatabaseCount('feed_entries', 1);
+        $this->assertDatabaseCount('diaper_entries', 1);
+        $this->assertDatabaseCount('sleep_entries', 1);
+        $this->assertDatabaseCount('milestone_entries', 1);
+
+        $this->get(route('babies.show', $baby))->assertOk()->assertSee('First smile');
+    }
+
+    public function test_diaper_entry_requires_at_least_one_of_pee_or_poop(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.diapers.store', $baby), [
+            'occurred_at' => now(),
+        ])->assertSessionHasErrors('is_wet');
+
+        $this->assertDatabaseCount('diaper_entries', 0);
+
+        $this->post(route('babies.diapers.store', $baby), [
+            'is_wet' => '1',
+            'is_dirty' => '1',
+            'consistency' => 'soft',
+            'occurred_at' => now(),
+        ])->assertRedirect(route('babies.diapers.index', $baby));
+
+        $entry = DiaperEntry::first();
+        $this->assertTrue($entry->is_wet);
+        $this->assertTrue($entry->is_dirty);
+        $this->assertSame('Pee & Poop', $entry->label());
+    }
+
+    public function test_growth_chart_and_guide_pages_render(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create(['date_of_birth' => now()->subMonths(6)]);
+
+        $baby->weightEntries()->create(['weight_kg' => 5.0, 'measured_at' => now()->subMonths(2)]);
+        $baby->weightEntries()->create(['weight_kg' => 6.2, 'measured_at' => now()->subMonth()]);
+
+        $this->actingAs($user);
+
+        $this->get(route('babies.growth', $baby))->assertOk()->assertSee('Weight over time');
+        $this->get(route('babies.guide', $baby))->assertOk();
+        $this->get(route('babies.age', $baby))->assertOk()->assertJsonStructure(['days', 'weeks', 'months', 'years', 'label']);
+    }
+
+    public function test_user_can_save_pediatrician_info(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->put(route('babies.pediatrician.update', $baby), [
+            'doctor_name' => 'Dr. Smith',
+            'clinic_name' => 'Sunshine Pediatrics',
+        ])->assertRedirect(route('babies.pediatrician.edit', $baby));
+
+        $this->assertDatabaseHas('pediatricians', [
+            'baby_id' => $baby->id,
+            'doctor_name' => 'Dr. Smith',
+        ]);
+    }
+
+    public function test_explicit_taken_at_takes_priority_over_exif_and_defaults(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.photos.store', $baby), [
+            'photo' => UploadedFile::fake()->image('baby.jpg'),
+            'taken_at' => '2020-05-01',
+        ])->assertRedirect(route('babies.photos.index', $baby));
+
+        $photo = $baby->photos()->first();
+        $this->assertSame('2020-05-01', $photo->taken_at->format('Y-m-d'));
+    }
+
+    public function test_upload_without_taken_at_or_exif_falls_back_to_now(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.photos.store', $baby), [
+            'photo' => UploadedFile::fake()->image('baby.jpg'),
+        ])->assertRedirect(route('babies.photos.index', $baby));
+
+        $photo = $baby->photos()->first();
+        $this->assertTrue($photo->taken_at->isToday());
+    }
+
+    public function test_user_can_upload_and_set_profile_photo(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.photos.store', $baby), [
+            'photo' => UploadedFile::fake()->image('baby.jpg'),
+        ])->assertRedirect(route('babies.photos.index', $baby));
+
+        $photo = $baby->photos()->first();
+        $this->assertNotNull($photo);
+        Storage::disk('public')->assertExists($photo->path);
+
+        $this->patch(route('babies.photos.profile', [$baby, $photo]))
+            ->assertRedirect(route('babies.photos.index', $baby));
+
+        $this->assertTrue($photo->fresh()->is_profile);
+        $this->assertSame($photo->path, $baby->fresh()->profile_photo_path);
+    }
+
+    public function test_quick_avatar_upload_sets_profile_photo_in_one_step(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.photos.store', $baby), [
+            'photo' => UploadedFile::fake()->image('avatar.jpg'),
+            'set_as_profile' => '1',
+        ])->assertRedirect(route('babies.photos.index', $baby));
+
+        $photo = $baby->photos()->first();
+        $this->assertTrue($photo->is_profile);
+        $this->assertSame($photo->path, $baby->fresh()->profile_photo_path);
+    }
+
+    public function test_csv_import_for_diapers_and_bottle_feeds(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user);
+
+        $diaperCsv = "occurred_at,pee,poop\n2026-08-01 08:30,1,0\n2026-08-01 12:15,1,1\n2026-08-01 14:00,0,0\n";
+        $this->post(route('babies.import.diapers', $baby), [
+            'file' => UploadedFile::fake()->createWithContent('diapers.csv', $diaperCsv),
+        ])->assertRedirect(route('babies.import.show', $baby));
+
+        $this->assertDatabaseCount('diaper_entries', 2);
+        $this->assertDatabaseHas('diaper_entries', ['is_wet' => 1, 'is_dirty' => 1]);
+
+        $feedCsv = "fed_at,amount_oz\n2026-08-01 09:00,3.5\n2026-08-01 13:00,4\n";
+        $this->post(route('babies.import.feeds', $baby), [
+            'file' => UploadedFile::fake()->createWithContent('feeds.csv', $feedCsv),
+        ])->assertRedirect(route('babies.import.show', $baby));
+
+        $this->assertDatabaseCount('feed_entries', 2);
+        $this->assertDatabaseHas('feed_entries', ['type' => 'bottle', 'amount_oz' => 3.5]);
+    }
+
+    public function test_all_edit_and_index_pages_render_for_a_fully_populated_baby(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $weight = $baby->weightEntries()->create(['weight_kg' => 5.4, 'measured_at' => now()]);
+        $feed = $baby->feedEntries()->create(['type' => 'bottle', 'fed_at' => now(), 'amount_oz' => 3.5]);
+        $diaper = $baby->diaperEntries()->create(['is_wet' => true, 'occurred_at' => now()]);
+        $sleep = $baby->sleepEntries()->create(['started_at' => now()->subHour(), 'ended_at' => now()]);
+        $milestone = $baby->milestoneEntries()->create(['title' => 'Rolled over', 'achieved_on' => now()]);
+
+        $this->actingAs($user);
+
+        $this->get(route('babies.edit', $baby))->assertOk();
+        $this->get(route('babies.weights.edit', [$baby, $weight]))->assertOk();
+        $this->get(route('babies.feeds.edit', [$baby, $feed]))->assertOk();
+        $this->get(route('babies.diapers.edit', [$baby, $diaper]))->assertOk();
+        $this->get(route('babies.sleeps.edit', [$baby, $sleep]))->assertOk();
+        $this->get(route('babies.milestones.edit', [$baby, $milestone]))->assertOk();
+        $this->get(route('babies.milestones.index', $baby))->assertOk();
+        $this->get(route('babies.pediatrician.edit', $baby))->assertOk();
+        $this->get(route('babies.photos.index', $baby))->assertOk();
+        $this->get(route('babies.import.show', $baby))->assertOk();
+        $this->get(route('babies.index'))->assertOk();
+    }
+}
