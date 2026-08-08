@@ -69,16 +69,22 @@ COPY --from=frontend /app/public/build ./public/build
 RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php \
     && php artisan package:discover --ansi
 
-RUN mkdir -p database \
+# The SQLite file lives in its own directory outside the app tree
+# (/var/lib/baby-tracker), never inside database/ — that directory also
+# holds migrations/seeders/factories, which are code and must always come
+# fresh from the image. Docker only seeds a named volume from image content
+# the first time it's empty, so mounting a volume over database/ risks
+# permanently shadowing those PHP files behind a stale, code-less volume.
+RUN mkdir -p /var/lib/baby-tracker \
         storage/framework/cache \
         storage/framework/sessions \
         storage/framework/views \
         storage/logs \
         storage/app/public \
         bootstrap/cache \
-    && touch database/database.sqlite \
-    && chown -R www-data:www-data database storage bootstrap/cache \
-    && chmod -R 775 database storage bootstrap/cache
+    && touch /var/lib/baby-tracker/database.sqlite \
+    && chown -R www-data:www-data /var/lib/baby-tracker storage bootstrap/cache \
+    && chmod -R 775 /var/lib/baby-tracker storage bootstrap/cache
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

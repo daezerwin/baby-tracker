@@ -3,8 +3,8 @@ set -e
 
 cd /var/www/html
 
-mkdir -p database storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
-touch database/database.sqlite
+mkdir -p /var/lib/baby-tracker storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+touch /var/lib/baby-tracker/database.sqlite
 
 if [ -z "$APP_KEY" ]; then
     echo "ERROR: APP_KEY is not set. Generate one with:"
@@ -19,6 +19,6 @@ if [ ! -e public/storage ]; then
     php artisan storage:link
 fi
 
-chown -R www-data:www-data database storage bootstrap/cache
+chown -R www-data:www-data /var/lib/baby-tracker storage bootstrap/cache
 
 exec "$@"

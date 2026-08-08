@@ -142,3 +142,18 @@ docker compose up -d --build
 Database migrations run automatically on every container start (see
 `docker/entrypoint.sh`) — they're idempotent, so this is safe on every
 deploy either way.
+
+### If you deployed before v1.0.2
+
+v1.0.0/v1.0.1 mounted the database volume over `/var/www/html/database`,
+which also holds the app's migration files — Docker only seeds a volume
+from image content the *first* time it's empty, so once that volume existed
+it permanently shadowed migrations from every subsequent image, leaving you
+stuck with a database that looks migrated but is actually missing tables
+(`no such table: sessions` and similar). v1.0.2 moves the data file to
+`/var/lib/baby-tracker`, which has no code in it, so this can't recur.
+
+If you hit this: pull v1.0.2+, then remove the old `baby_tracker_database`
+volume (Portainer → Volumes, or `docker volume rm <stack>_baby_tracker_database`)
+before redeploying — the old volume never had real tables in it, so there's
+nothing worth keeping.
