@@ -14,6 +14,7 @@ if [ -z "$APP_KEY" ]; then
 fi
 
 php artisan migrate --force
+php artisan db:seed --force
 
 if [ ! -e public/storage ]; then
     php artisan storage:link

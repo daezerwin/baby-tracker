@@ -14,6 +14,10 @@ class AgeGuideSeeder extends Seeder
      */
     public function run(): void
     {
+        if (AgeGuide::query()->exists()) {
+            return;
+        }
+
         $guides = [
             [
                 'age_label' => 'Weeks 0-2 (Newborn)',

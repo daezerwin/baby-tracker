@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Volt\Volt;
 use Tests\TestCase;
 
 class BabyTrackerFlowTest extends TestCase
@@ -63,6 +64,75 @@ class BabyTrackerFlowTest extends TestCase
             ->assertSee('Normal range')
             ->assertSee('Typical median')
             ->assertDontSee("Parent's Guide", false);
+    }
+
+    public function test_dashboard_quick_add_feed_and_diaper_save_notes(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+        session(['current_baby_id' => $baby->id]);
+
+        $this->actingAs($user);
+
+        Volt::test('dashboard')
+            ->set('quickFeedType', 'bottle')
+            ->set('quickFeedAt', now()->format('Y-m-d\TH:i'))
+            ->set('quickFeedAmount', 4)
+            ->set('quickFeedNotes', 'Spit up a little after')
+            ->call('saveFeed');
+
+        $this->assertDatabaseHas('feed_entries', [
+            'baby_id' => $baby->id,
+            'notes' => 'Spit up a little after',
+        ]);
+
+        Volt::test('dashboard')
+            ->set('quickDiaperIsWet', true)
+            ->set('quickDiaperIsDirty', true)
+            ->set('quickDiaperConsistency', 'soft')
+            ->set('quickDiaperAt', now()->format('Y-m-d\TH:i'))
+            ->set('quickDiaperNotes', 'Diaper rash cream applied')
+            ->call('saveDiaper');
+
+        $this->assertDatabaseHas('diaper_entries', [
+            'baby_id' => $baby->id,
+            'consistency' => 'soft',
+            'notes' => 'Diaper rash cream applied',
+        ]);
+    }
+
+    public function test_dashboard_quick_add_respects_client_local_time_converted_to_utc(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+        session(['current_baby_id' => $baby->id]);
+
+        $this->actingAs($user);
+
+        // Simulates the browser converting the datetime-local input's wall-clock
+        // value to a UTC instant (new Date(value).toISOString()) before the
+        // Livewire action call, since the app runs in UTC but a caregiver's
+        // browser is usually in a different offset.
+        $utcInstant = '2026-01-15T10:30:00.000Z';
+
+        Volt::test('dashboard')
+            ->set('quickFeedType', 'bottle')
+            ->set('quickFeedAmount', 4)
+            ->call('saveFeed', $utcInstant);
+
+        $this->assertDatabaseHas('feed_entries', [
+            'baby_id' => $baby->id,
+            'fed_at' => '2026-01-15 10:30:00',
+        ]);
+
+        Volt::test('dashboard')
+            ->set('quickDiaperIsWet', true)
+            ->call('saveDiaper', $utcInstant);
+
+        $this->assertDatabaseHas('diaper_entries', [
+            'baby_id' => $baby->id,
+            'occurred_at' => '2026-01-15 10:30:00',
+        ]);
     }
 
     public function test_user_can_create_a_baby(): void
@@ -157,6 +227,24 @@ class BabyTrackerFlowTest extends TestCase
         $this->assertSame('Pee & Poop', $entry->label());
     }
 
+    public function test_seeded_guide_and_milestone_content_shows_on_guide_page(): void
+    {
+        $this->seed();
+        $this->seed(); // seeders must be safe to re-run (e.g. on every container boot)
+
+        $this->assertGreaterThan(0, \App\Models\AgeGuide::count());
+        $this->assertGreaterThan(0, \App\Models\MilestoneDefinition::count());
+
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create(['date_of_birth' => now()->subWeeks(8)]);
+
+        $this->actingAs($user)
+            ->get(route('babies.guide', $baby))
+            ->assertOk()
+            ->assertDontSee('No guide content for this age yet')
+            ->assertDontSee('No milestones catalogued for this age range');
+    }
+
     public function test_growth_chart_and_guide_pages_render(): void
     {
         $user = User::factory()->create();
@@ -217,6 +305,25 @@ class BabyTrackerFlowTest extends TestCase
 
         $photo = $baby->photos()->first();
         $this->assertTrue($photo->taken_at->isToday());
+    }
+
+    public function test_user_can_upload_multiple_photos_at_once(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.photos.store', $baby), [
+            'photos' => [
+                UploadedFile::fake()->image('one.jpg'),
+                UploadedFile::fake()->image('two.jpg'),
+                UploadedFile::fake()->image('three.jpg'),
+            ],
+        ])->assertRedirect(route('babies.photos.index', $baby));
+
+        $this->assertSame(3, $baby->photos()->count());
+        $baby->photos()->get()->each(fn ($photo) => Storage::disk('public')->assertExists($photo->path));
     }
 
     public function test_user_can_upload_and_set_profile_photo(): void

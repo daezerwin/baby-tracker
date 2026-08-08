@@ -27,28 +27,39 @@ class BabyPhotoController extends Controller
         $this->authorize('update', $baby);
 
         $validated = $request->validate([
-            'photo' => ['required', 'image', 'max:8192'],
+            'photo' => ['required_without:photos', 'nullable', 'image', 'max:8192'],
+            'photos' => ['required_without:photo', 'nullable', 'array', 'min:1'],
+            'photos.*' => ['image', 'max:8192'],
             'caption' => ['nullable', 'string', 'max:255'],
             'taken_at' => ['nullable', 'date'],
         ]);
 
-        $takenAt = $validated['taken_at'] ?? ExifDateExtractor::extract($request->file('photo')) ?? now();
+        $files = $request->hasFile('photos') ? $request->file('photos') : [$request->file('photo')];
 
-        $path = $request->file('photo')->store('baby-photos', 'public');
+        $lastPhoto = null;
 
-        $photo = $baby->photos()->create([
-            'path' => $path,
-            'caption' => $validated['caption'] ?? null,
-            'taken_at' => $takenAt,
-        ]);
+        foreach ($files as $file) {
+            $takenAt = $validated['taken_at'] ?? ExifDateExtractor::extract($file) ?? now();
 
-        if ($request->boolean('set_as_profile')) {
-            $baby->photos()->whereKeyNot($photo->id)->update(['is_profile' => false]);
-            $photo->update(['is_profile' => true]);
-            $baby->update(['profile_photo_path' => $photo->path]);
+            $path = $file->store('baby-photos', 'public');
+
+            $lastPhoto = $baby->photos()->create([
+                'path' => $path,
+                'caption' => $validated['caption'] ?? null,
+                'taken_at' => $takenAt,
+            ]);
         }
 
-        return back(fallback: route('babies.photos.index', $baby))->with('status', 'Photo uploaded.');
+        if ($request->boolean('set_as_profile') && $lastPhoto) {
+            $baby->photos()->whereKeyNot($lastPhoto->id)->update(['is_profile' => false]);
+            $lastPhoto->update(['is_profile' => true]);
+            $baby->update(['profile_photo_path' => $lastPhoto->path]);
+        }
+
+        $count = count($files);
+
+        return back(fallback: route('babies.photos.index', $baby))
+            ->with('status', $count === 1 ? 'Photo uploaded.' : "{$count} photos uploaded.");
     }
 
     public function setProfile(Baby $baby, BabyPhoto $photo): RedirectResponse

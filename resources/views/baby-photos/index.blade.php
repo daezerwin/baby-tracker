@@ -12,21 +12,24 @@
             <form method="POST" action="{{ route('babies.photos.store', $baby) }}" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 <div>
-                    <x-input-label for="photo" value="Upload a photo" />
-                    <input id="photo" name="photo" type="file" accept="image/*" required
+                    <x-input-label for="photos" value="Upload photos" />
+                    <input id="photos" name="photos[]" type="file" accept="image/*" multiple required
                            class="mt-1 block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-medium hover:file:bg-blue-100" />
+                    <p class="text-xs text-gray-400 mt-1">Select multiple photos at once to upload them all together.</p>
                     <x-input-error :messages="$errors->get('photo')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('photos')" class="mt-1" />
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <x-input-label for="caption" value="Caption (optional)" />
                         <x-text-input id="caption" name="caption" type="text" class="mt-1 block w-full" />
+                        <p class="text-xs text-gray-400 mt-1">Applied to every photo in this upload.</p>
                         <x-input-error :messages="$errors->get('caption')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="taken_at" value="Date taken (optional)" />
                         <x-text-input id="taken_at" name="taken_at" type="date" class="mt-1 block w-full" />
-                        <p class="text-xs text-gray-400 mt-1">Leave blank to auto-detect from the photo's EXIF data, if available.</p>
+                        <p class="text-xs text-gray-400 mt-1">Leave blank to auto-detect from each photo's EXIF data, if available.</p>
                         <x-input-error :messages="$errors->get('taken_at')" class="mt-1" />
                     </div>
                 </div>

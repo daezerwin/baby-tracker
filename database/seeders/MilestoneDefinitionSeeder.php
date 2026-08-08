@@ -13,6 +13,10 @@ class MilestoneDefinitionSeeder extends Seeder
      */
     public function run(): void
     {
+        if (MilestoneDefinition::query()->exists()) {
+            return;
+        }
+
         $milestones = [
             // 0-6 weeks
             ['age_min_weeks' => 0, 'age_max_weeks' => 6, 'category' => 'motor', 'title' => 'Lifts head briefly during tummy time', 'description' => 'Can lift and turn head slightly while lying on their stomach.'],

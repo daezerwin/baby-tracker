@@ -13,10 +13,12 @@ state([
     'quickFeedAt' => null,
     'quickFeedAmount' => null,
     'quickFeedSide' => null,
+    'quickFeedNotes' => null,
     'quickDiaperIsWet' => true,
     'quickDiaperIsDirty' => false,
     'quickDiaperAt' => null,
     'quickDiaperConsistency' => null,
+    'quickDiaperNotes' => null,
 ]);
 
 mount(function () {
@@ -112,21 +114,28 @@ $resetQuickForms = function () {
     $this->quickFeedAt = now()->format('Y-m-d\TH:i');
     $this->quickFeedAmount = 3;
     $this->quickFeedSide = null;
+    $this->quickFeedNotes = null;
     $this->quickDiaperIsWet = true;
     $this->quickDiaperIsDirty = false;
     $this->quickDiaperAt = now()->format('Y-m-d\TH:i');
     $this->quickDiaperConsistency = null;
+    $this->quickDiaperNotes = null;
 };
 
-$saveFeed = function () {
+$saveFeed = function ($feedAtUtc = null) {
     if (! $this->baby) {
         return;
+    }
+
+    if ($feedAtUtc) {
+        $this->quickFeedAt = $feedAtUtc;
     }
 
     $this->validate([
         'quickFeedType' => ['required', 'in:breast,bottle,solid'],
         'quickFeedAt' => ['required', 'date'],
         'quickFeedAmount' => ['nullable', 'numeric', 'min:0', 'max:64'],
+        'quickFeedNotes' => ['nullable', 'string'],
     ]);
 
     $this->baby->feedEntries()->create([
@@ -134,20 +143,26 @@ $saveFeed = function () {
         'fed_at' => $this->quickFeedAt,
         'amount_oz' => $this->quickFeedType === 'bottle' ? $this->quickFeedAmount : null,
         'side' => $this->quickFeedSide,
+        'notes' => $this->quickFeedNotes,
     ]);
 
     $this->resetQuickForms();
 };
 
-$saveDiaper = function () {
+$saveDiaper = function ($occurredAtUtc = null) {
     if (! $this->baby) {
         return;
+    }
+
+    if ($occurredAtUtc) {
+        $this->quickDiaperAt = $occurredAtUtc;
     }
 
     $this->validate([
         'quickDiaperIsWet' => ['boolean'],
         'quickDiaperIsDirty' => ['boolean'],
         'quickDiaperAt' => ['required', 'date'],
+        'quickDiaperNotes' => ['nullable', 'string'],
     ]);
 
     if (! $this->quickDiaperIsWet && ! $this->quickDiaperIsDirty) {
@@ -161,6 +176,7 @@ $saveDiaper = function () {
         'is_dirty' => $this->quickDiaperIsDirty,
         'occurred_at' => $this->quickDiaperAt,
         'consistency' => $this->quickDiaperIsDirty ? $this->quickDiaperConsistency : null,
+        'notes' => $this->quickDiaperNotes,
     ]);
 
     $this->resetQuickForms();
@@ -415,7 +431,7 @@ $saveDiaper = function () {
 
             <!-- Quick Add Feed Modal -->
             <x-modal name="quick-feed" max-width="sm">
-                <form x-on:submit.prevent="$wire.saveFeed().then(() => $dispatch('close-modal', 'quick-feed'))" class="p-8 space-y-5">
+                <form x-on:submit.prevent="$wire.saveFeed(new Date($wire.quickFeedAt).toISOString()).then(() => $dispatch('close-modal', 'quick-feed'))" class="p-8 space-y-5">
                     <h3 class="text-xl font-semibold text-gray-800">Log a Feed</h3>
 
                     <div>
@@ -449,6 +465,11 @@ $saveDiaper = function () {
                         <x-text-input id="quickFeedAt" wire:model="quickFeedAt" type="datetime-local" class="mt-1 block w-full" />
                     </div>
 
+                    <div>
+                        <x-input-label for="quickFeedNotes" value="Notes (optional)" />
+                        <textarea id="quickFeedNotes" wire:model="quickFeedNotes" rows="2" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm text-base py-2.5 px-3.5 focus:border-blue-600 focus:ring-blue-600"></textarea>
+                    </div>
+
                     <div class="flex justify-end gap-2 pt-2">
                         <x-secondary-button type="button" x-on:click="$dispatch('close-modal', 'quick-feed')">Cancel</x-secondary-button>
                         <x-primary-button>Save Feed</x-primary-button>
@@ -458,7 +479,7 @@ $saveDiaper = function () {
 
             <!-- Quick Add Diaper Modal -->
             <x-modal name="quick-diaper" max-width="sm">
-                <form x-on:submit.prevent="$wire.saveDiaper().then(() => $dispatch('close-modal', 'quick-diaper'))" class="p-8 space-y-5">
+                <form x-on:submit.prevent="$wire.saveDiaper(new Date($wire.quickDiaperAt).toISOString()).then(() => $dispatch('close-modal', 'quick-diaper'))" class="p-8 space-y-5">
                     <h3 class="text-xl font-semibold text-gray-800">Log a Diaper Change</h3>
 
                     <div>
@@ -494,6 +515,11 @@ $saveDiaper = function () {
                     <div>
                         <x-input-label for="quickDiaperAt" value="Occurred At" />
                         <x-text-input id="quickDiaperAt" wire:model="quickDiaperAt" type="datetime-local" class="mt-1 block w-full" />
+                    </div>
+
+                    <div>
+                        <x-input-label for="quickDiaperNotes" value="Notes (optional)" />
+                        <textarea id="quickDiaperNotes" wire:model="quickDiaperNotes" rows="2" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm text-base py-2.5 px-3.5 focus:border-blue-600 focus:ring-blue-600"></textarea>
                     </div>
 
                     <div class="flex justify-end gap-2 pt-2">
