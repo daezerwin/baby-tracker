@@ -70,6 +70,11 @@ class Baby extends Model
         return $this->hasMany(BabyPhoto::class)->orderByDesc('taken_at');
     }
 
+    public function storyEntries(): HasMany
+    {
+        return $this->hasMany(BabyStory::class)->orderByDesc('occurred_at');
+    }
+
     public function age(): AgeCalculator
     {
         return new AgeCalculator($this->date_of_birth);

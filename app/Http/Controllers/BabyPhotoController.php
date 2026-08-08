@@ -28,7 +28,7 @@ class BabyPhotoController extends Controller
         $this->authorize('update', $baby);
 
         $validated = $request->validate([
-            'photo' => ['required', 'image', 'max:16384'],
+            'photo' => ['required', 'image', 'max:204800'],
             'caption' => ['nullable', 'string', 'max:255'],
             'taken_at' => ['nullable', 'date'],
         ]);

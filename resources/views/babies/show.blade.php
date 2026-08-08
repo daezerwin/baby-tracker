@@ -47,6 +47,7 @@
                 <a href="{{ route('babies.sleeps.create', $baby) }}" wire:navigate class="text-center px-4 py-4 rounded-xl bg-indigo-50 text-indigo-700 text-base font-semibold hover:bg-indigo-100">Sleep</a>
                 <a href="{{ route('babies.weights.create', $baby) }}" wire:navigate class="text-center px-4 py-4 rounded-xl bg-blue-50 text-blue-800 text-base font-semibold hover:bg-blue-100">Weight</a>
                 <a href="{{ route('babies.milestones.create', $baby) }}" wire:navigate class="text-center px-4 py-4 rounded-xl bg-violet-50 text-violet-700 text-base font-semibold hover:bg-violet-100">Milestone</a>
+                <a href="{{ route('babies.stories.create', $baby) }}" wire:navigate class="text-center px-4 py-4 rounded-xl bg-rose-50 text-rose-700 text-base font-semibold hover:bg-rose-100">Story</a>
             </div>
         </x-card>
 
@@ -73,6 +74,12 @@
                 <x-card class="p-8 hover:shadow-md transition h-full">
                     <p class="font-semibold text-lg text-gray-800">Photos</p>
                     <p class="text-base text-gray-500 mt-1">{{ $baby->photos()->count() }} saved</p>
+                </x-card>
+            </a>
+            <a href="{{ route('babies.stories.index', $baby) }}" wire:navigate>
+                <x-card class="p-8 hover:shadow-md transition h-full">
+                    <p class="font-semibold text-lg text-gray-800">Stories</p>
+                    <p class="text-base text-gray-500 mt-1">{{ $baby->storyEntries()->count() }} shared</p>
                 </x-card>
             </a>
         </div>
@@ -102,6 +109,7 @@
             <a href="{{ route('babies.diapers.index', $baby) }}" wire:navigate class="text-base text-gray-500 hover:text-blue-700 py-2.5">All Diapers</a>
             <a href="{{ route('babies.sleeps.index', $baby) }}" wire:navigate class="text-base text-gray-500 hover:text-blue-700 py-2.5">All Sleep</a>
             <a href="{{ route('babies.weights.index', $baby) }}" wire:navigate class="text-base text-gray-500 hover:text-blue-700 py-2.5">All Weights</a>
+            <a href="{{ route('babies.stories.index', $baby) }}" wire:navigate class="text-base text-gray-500 hover:text-blue-700 py-2.5">All Stories</a>
         </div>
     </div>
 </x-app-layout>

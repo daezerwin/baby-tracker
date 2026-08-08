@@ -346,11 +346,11 @@ $saveDiaper = function () {
 
                 <div class="flex flex-col gap-3 h-full">
                     <button type="button" x-on:click="$wire.quickFeedAt = localDateTimeInput(); $dispatch('open-modal', 'quick-feed')"
-                            class="flex-1 flex items-center justify-center w-full px-4 rounded-xl bg-amber-500 text-white font-semibold text-lg hover:bg-amber-600">
+                            class="flex-1 flex items-center justify-center w-full px-6 py-6 rounded-2xl bg-amber-500 text-white font-semibold text-lg shadow-sm hover:bg-amber-600 hover:shadow-md transition">
                         + Log Feed
                     </button>
                     <button type="button" x-on:click="$wire.quickDiaperAt = localDateTimeInput(); $dispatch('open-modal', 'quick-diaper')"
-                            class="flex-1 flex items-center justify-center w-full px-4 rounded-xl bg-emerald-500 text-white font-semibold text-lg hover:bg-emerald-600">
+                            class="flex-1 flex items-center justify-center w-full px-6 py-6 rounded-2xl bg-emerald-500 text-white font-semibold text-lg shadow-sm hover:bg-emerald-600 hover:shadow-md transition">
                         + Log Diaper
                     </button>
                 </div>
@@ -514,8 +514,16 @@ $saveDiaper = function () {
                         </div>
                     @elseif ($quickFeedType === 'bottle')
                         <div>
-                            <x-input-label for="quickFeedAmount" value="Amount (oz)" />
-                            <x-text-input id="quickFeedAmount" wire:model="quickFeedAmount" type="number" step="0.5" min="0" class="mt-1 block w-full" />
+                            <x-input-label value="Amount (oz)" />
+                            <div class="mt-1 grid grid-cols-5 gap-2">
+                                @foreach ([0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5] as $amount)
+                                    <label class="flex items-center justify-center rounded-lg border-2 py-3 text-sm font-medium cursor-pointer transition"
+                                           :class="$wire.quickFeedAmount == {{ $amount }} ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'">
+                                        <input type="radio" wire:model="quickFeedAmount" value="{{ $amount }}" class="sr-only">
+                                        {{ rtrim(rtrim(number_format($amount, 1), '0'), '.') }}
+                                    </label>
+                                @endforeach
+                            </div>
                         </div>
                     @endif
 

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AgeController;
 use App\Http\Controllers\BabyController;
 use App\Http\Controllers\BabyPhotoController;
+use App\Http\Controllers\BabyStoryController;
 use App\Http\Controllers\DiaperEntryController;
 use App\Http\Controllers\FeedEntryController;
 use App\Http\Controllers\GuideController;
@@ -47,6 +48,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('photos', BabyPhotoController::class)
             ->only(['index', 'store', 'destroy']);
         Route::patch('photos/{photo}/profile', [BabyPhotoController::class, 'setProfile'])->name('photos.profile');
+
+        Route::resource('stories', BabyStoryController::class)
+            ->except(['show'])->parameters(['stories' => 'story']);
 
         Route::get('import', [ImportController::class, 'show'])->name('import.show');
         Route::post('import/diapers', [ImportController::class, 'importDiapers'])->name('import.diapers');

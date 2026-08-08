@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Baby;
 use App\Models\BabyPhoto;
+use App\Models\BabyStory;
 use App\Models\DiaperEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -448,6 +449,81 @@ class BabyTrackerFlowTest extends TestCase
         $this->assertSame($photo->path, $baby->fresh()->profile_photo_path);
     }
 
+    public function test_user_can_create_a_story_with_caption_only(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.stories.store', $baby), [
+            'caption' => 'First time rolling over!',
+        ])->assertRedirect(route('babies.stories.index', $baby));
+
+        $this->assertDatabaseHas('baby_stories', [
+            'baby_id' => $baby->id,
+            'caption' => 'First time rolling over!',
+            'image_path' => null,
+        ]);
+    }
+
+    public function test_user_can_create_a_story_with_image_only(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.stories.store', $baby), [
+            'image' => UploadedFile::fake()->image('moment.jpg'),
+        ])->assertRedirect(route('babies.stories.index', $baby));
+
+        $story = $baby->storyEntries()->first();
+        $this->assertNotNull($story);
+        $this->assertNull($story->caption);
+        Storage::disk('public')->assertExists($story->image_path);
+    }
+
+    public function test_story_requires_a_caption_or_an_image(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.stories.store', $baby), [])
+            ->assertSessionHasErrors(['caption', 'image']);
+
+        $this->assertSame(0, $baby->storyEntries()->count());
+    }
+
+    public function test_stories_feed_groups_by_date_and_paginates(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        BabyStory::factory()->for($baby)->count(25)->create(['occurred_at' => now()]);
+
+        $response = $this->actingAs($user)->get(route('babies.stories.index', $baby))->assertOk();
+
+        $this->assertCount(20, $response->viewData('stories'));
+    }
+
+    public function test_user_can_update_and_delete_a_story(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+        $story = BabyStory::factory()->for($baby)->create(['caption' => 'Original']);
+
+        $this->actingAs($user)->put(route('babies.stories.update', [$baby, $story]), [
+            'caption' => 'Updated caption',
+            'occurred_at' => now()->format('Y-m-d\TH:i'),
+        ])->assertRedirect(route('babies.stories.index', $baby));
+
+        $this->assertSame('Updated caption', $story->fresh()->caption);
+
+        $this->delete(route('babies.stories.destroy', [$baby, $story]))
+            ->assertRedirect(route('babies.stories.index', $baby));
+
+        $this->assertDatabaseMissing('baby_stories', ['id' => $story->id]);
+    }
+
     public function test_csv_import_for_diapers_and_bottle_feeds(): void
     {
         $user = User::factory()->create();
@@ -507,6 +583,7 @@ class BabyTrackerFlowTest extends TestCase
         $diaper = $baby->diaperEntries()->create(['is_wet' => true, 'occurred_at' => now()]);
         $sleep = $baby->sleepEntries()->create(['started_at' => now()->subHour(), 'ended_at' => now()]);
         $milestone = $baby->milestoneEntries()->create(['title' => 'Rolled over', 'achieved_on' => now()]);
+        $story = $baby->storyEntries()->create(['caption' => 'A moment', 'occurred_at' => now()]);
 
         $this->actingAs($user);
 
@@ -519,6 +596,8 @@ class BabyTrackerFlowTest extends TestCase
         $this->get(route('babies.milestones.index', $baby))->assertOk();
         $this->get(route('babies.pediatrician.edit', $baby))->assertOk();
         $this->get(route('babies.photos.index', $baby))->assertOk();
+        $this->get(route('babies.stories.index', $baby))->assertOk();
+        $this->get(route('babies.stories.edit', [$baby, $story]))->assertOk();
         $this->get(route('babies.import.show', $baby))->assertOk();
         $this->get(route('babies.index'))->assertOk();
     }
