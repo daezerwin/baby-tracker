@@ -29,9 +29,16 @@
     </div>
 
     <div x-show="type === 'bottle'">
-        <x-input-label for="amount_oz" value="Amount (oz)" />
-        <input id="amount_oz" name="amount_oz" type="number" step="0.5" min="0" x-model.number="amountOz" :disabled="type !== 'bottle'"
-               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm text-base py-2.5 px-3.5 focus:border-blue-600 focus:ring-blue-600">
+        <x-input-label value="Amount (oz)" />
+        <div class="mt-1 grid grid-cols-5 gap-2">
+            @foreach ([0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5] as $amount)
+                <label class="flex items-center justify-center rounded-lg border-2 py-3 text-sm font-medium cursor-pointer transition"
+                       :class="amountOz == {{ $amount }} ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'">
+                    <input type="radio" name="amount_oz" x-model.number="amountOz" value="{{ $amount }}" :disabled="type !== 'bottle'" class="sr-only">
+                    {{ rtrim(rtrim(number_format($amount, 1), '0'), '.') }}
+                </label>
+            @endforeach
+        </div>
         <x-input-error :messages="$errors->get('amount_oz')" class="mt-1" />
     </div>
 </div>

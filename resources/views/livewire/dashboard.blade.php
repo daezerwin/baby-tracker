@@ -221,38 +221,7 @@ $saveDiaper = function () {
     $weightStatus = $this->weightStatus;
 @endphp
 
-<div x-data="{
-        now: new Date(),
-        localDateTimeInput() {
-            const d = new Date();
-            const pad = (n) => String(n).padStart(2, '0');
-            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        },
-        timeAgo(iso, tick) {
-            void tick; // read `now` so this re-evaluates every tick
-            const diffSec = Math.round((new Date(iso) - new Date()) / 1000);
-            const abs = Math.abs(diffSec);
-            const suffix = diffSec <= 0 ? 'ago' : 'from now';
-            // Show minutes + seconds under an hour so the live tick is visibly
-            // confirmable, not just a once-a-minute jump.
-            if (abs < 3600) {
-                const m = Math.floor(abs / 60);
-                const s = abs % 60;
-                const sLabel = `${s} second${s === 1 ? '' : 's'}`;
-                if (m === 0) return `${sLabel} ${suffix}`;
-                return `${m} minute${m === 1 ? '' : 's'} ${sLabel} ${suffix}`;
-            }
-            const units = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600]];
-            for (const [name, secs] of units) {
-                if (abs >= secs) {
-                    const value = Math.round(abs / secs);
-                    const label = value === 1 ? name : `${name}s`;
-                    return `${value} ${label} ${suffix}`;
-                }
-            }
-            return `${abs} seconds ${suffix}`;
-        },
-     }" x-init="setInterval(() => now = new Date(), 1000)">
+<div x-data>
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         @if ($this->babies->isEmpty())
@@ -274,8 +243,8 @@ $saveDiaper = function () {
                         </div>
                     </div>
                     <div>
-                        <p class="text-xl sm:text-2xl font-bold text-gray-800 tabular-nums" x-text="now.toLocaleTimeString()"></p>
-                        <p class="text-xs text-gray-400 mt-0.5" x-text="now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })"></p>
+                        <p class="text-xl sm:text-2xl font-bold text-gray-800 tabular-nums" x-text="$store.clock.now.toLocaleTimeString()"></p>
+                        <p class="text-xs text-gray-400 mt-0.5" x-text="$store.clock.now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })"></p>
                         <a href="{{ route('babies.show', $baby) }}" wire:navigate class="text-sm text-blue-600 hover:text-blue-700 mt-1 inline-block">View profile →</a>
                     </div>
                 </x-card>
@@ -345,11 +314,11 @@ $saveDiaper = function () {
                 @endif
 
                 <div class="flex flex-col gap-3 h-full">
-                    <button type="button" x-on:click="$wire.quickFeedAt = localDateTimeInput(); $dispatch('open-modal', 'quick-feed')"
+                    <button type="button" x-on:click="$wire.quickFeedAt = $store.clock.localDateTimeInput(); $dispatch('open-modal', 'quick-feed')"
                             class="flex-1 flex items-center justify-center w-full px-6 py-6 rounded-2xl bg-amber-500 text-white font-semibold text-lg shadow-sm hover:bg-amber-600 hover:shadow-md transition">
                         + Log Feed
                     </button>
-                    <button type="button" x-on:click="$wire.quickDiaperAt = localDateTimeInput(); $dispatch('open-modal', 'quick-diaper')"
+                    <button type="button" x-on:click="$wire.quickDiaperAt = $store.clock.localDateTimeInput(); $dispatch('open-modal', 'quick-diaper')"
                             class="flex-1 flex items-center justify-center w-full px-6 py-6 rounded-2xl bg-emerald-500 text-white font-semibold text-lg shadow-sm hover:bg-emerald-600 hover:shadow-md transition">
                         + Log Diaper
                     </button>

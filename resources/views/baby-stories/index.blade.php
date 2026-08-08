@@ -30,8 +30,12 @@
                         <div class="space-y-4">
                             @foreach ($dayStories as $story)
                                 <x-card class="overflow-hidden">
-                                    @if ($story->image_path)
-                                        <img src="{{ $story->imageUrl() }}" alt="" class="w-full max-h-96 object-cover">
+                                    @if ($story->media_path)
+                                        @if ($story->isVideo())
+                                            <video src="{{ $story->mediaUrl() }}" class="w-full max-h-96 bg-black" controls playsinline></video>
+                                        @else
+                                            <img src="{{ $story->mediaUrl() }}" alt="" class="w-full max-h-96 object-cover">
+                                        @endif
                                     @endif
                                     <div class="p-5">
                                         <div class="flex items-start justify-between gap-3">

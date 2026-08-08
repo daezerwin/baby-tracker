@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['baby_id', 'caption', 'image_path', 'occurred_at'])]
+#[Fillable(['baby_id', 'caption', 'media_path', 'media_type', 'occurred_at'])]
 class BabyStory extends Model
 {
     /** @use HasFactory<BabyStoryFactory> */
@@ -26,8 +26,13 @@ class BabyStory extends Model
         return $this->belongsTo(Baby::class);
     }
 
-    public function imageUrl(): ?string
+    public function mediaUrl(): ?string
     {
-        return $this->image_path ? asset('storage/'.$this->image_path) : null;
+        return $this->media_path ? asset('storage/'.$this->media_path) : null;
+    }
+
+    public function isVideo(): bool
+    {
+        return $this->media_type === 'video';
     }
 }

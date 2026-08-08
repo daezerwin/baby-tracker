@@ -461,7 +461,7 @@ class BabyTrackerFlowTest extends TestCase
         $this->assertDatabaseHas('baby_stories', [
             'baby_id' => $baby->id,
             'caption' => 'First time rolling over!',
-            'image_path' => null,
+            'media_path' => null,
         ]);
     }
 
@@ -473,22 +473,40 @@ class BabyTrackerFlowTest extends TestCase
         $baby = Baby::factory()->for($user)->create();
 
         $this->actingAs($user)->post(route('babies.stories.store', $baby), [
-            'image' => UploadedFile::fake()->image('moment.jpg'),
+            'media' => UploadedFile::fake()->image('moment.jpg'),
         ])->assertRedirect(route('babies.stories.index', $baby));
 
         $story = $baby->storyEntries()->first();
         $this->assertNotNull($story);
         $this->assertNull($story->caption);
-        Storage::disk('public')->assertExists($story->image_path);
+        $this->assertSame('image', $story->media_type);
+        Storage::disk('public')->assertExists($story->media_path);
     }
 
-    public function test_story_requires_a_caption_or_an_image(): void
+    public function test_user_can_create_a_story_with_video_only(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('babies.stories.store', $baby), [
+            'media' => UploadedFile::fake()->create('moment.mp4', 5000, 'video/mp4'),
+        ])->assertRedirect(route('babies.stories.index', $baby));
+
+        $story = $baby->storyEntries()->first();
+        $this->assertNotNull($story);
+        $this->assertTrue($story->isVideo());
+        Storage::disk('public')->assertExists($story->media_path);
+    }
+
+    public function test_story_requires_a_caption_or_media(): void
     {
         $user = User::factory()->create();
         $baby = Baby::factory()->for($user)->create();
 
         $this->actingAs($user)->post(route('babies.stories.store', $baby), [])
-            ->assertSessionHasErrors(['caption', 'image']);
+            ->assertSessionHasErrors(['caption', 'media']);
 
         $this->assertSame(0, $baby->storyEntries()->count());
     }

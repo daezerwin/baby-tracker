@@ -12,7 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('baby_id')->constrained()->cascadeOnDelete();
             $table->text('caption')->nullable();
-            $table->string('image_path')->nullable();
+            $table->string('media_path')->nullable();
+            $table->enum('media_type', ['image', 'video'])->nullable();
             $table->dateTime('occurred_at');
             $table->timestamps();
         });

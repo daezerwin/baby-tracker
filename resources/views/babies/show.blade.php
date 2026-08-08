@@ -27,9 +27,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <x-stat-card label="Last Feed" color="amber"
                 :value="$lastFeed ? $lastFeed->fed_at->diffForHumans() : '—'"
+                :live-since="$lastFeed?->fed_at?->toJSON()"
                 :meta="$lastFeed ? ucfirst($lastFeed->type).' · '.$lastFeed->fed_at->format('M j, g:i A') : 'Not logged yet'" />
             <x-stat-card label="Last Diaper" color="emerald"
                 :value="$lastDiaper ? $lastDiaper->occurred_at->diffForHumans() : '—'"
+                :live-since="$lastDiaper?->occurred_at?->toJSON()"
                 :meta="$lastDiaper ? $lastDiaper->label().' · '.$lastDiaper->occurred_at->format('M j, g:i A') : 'Not logged yet'" />
             <x-stat-card label="Last Sleep" color="indigo"
                 :value="$lastSleep ? $lastSleep->started_at->diffForHumans() : '—'"

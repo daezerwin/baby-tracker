@@ -20,7 +20,7 @@
     <div class="min-w-0">
         <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">{{ $label }}</p>
         @if ($liveSince)
-            <p class="text-2xl font-semibold text-gray-800 truncate mt-0.5" x-text="timeAgo('{{ $liveSince }}', now)">{{ $value }}</p>
+            <p class="text-2xl font-semibold text-gray-800 truncate mt-0.5" x-data x-text="$store.clock.timeAgo('{{ $liveSince }}')">{{ $value }}</p>
         @else
             <p class="text-2xl font-semibold text-gray-800 truncate mt-0.5">{{ $value }}</p>
         @endif

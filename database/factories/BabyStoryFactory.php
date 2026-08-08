@@ -21,7 +21,8 @@ class BabyStoryFactory extends Factory
         return [
             'baby_id' => Baby::factory(),
             'caption' => $this->faker->sentence(),
-            'image_path' => null,
+            'media_path' => null,
+            'media_type' => null,
             'occurred_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
         ];
     }
