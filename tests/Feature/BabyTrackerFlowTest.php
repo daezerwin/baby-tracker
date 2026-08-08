@@ -282,6 +282,31 @@ class BabyTrackerFlowTest extends TestCase
         $this->assertDatabaseHas('feed_entries', ['type' => 'bottle', 'amount_oz' => 3.5]);
     }
 
+    public function test_csv_import_handles_blank_consistency_cells(): void
+    {
+        // Regression test: a blank CSV cell parses to an empty string, not
+        // null. The `consistency` column is a strict enum (soft/firm/runny/
+        // hard or NULL) — "" satisfies neither, so every row with a blank
+        // consistency used to throw and get silently counted as "skipped".
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $this->actingAs($user);
+
+        $csv = "occurred_at,pee,poop,consistency,notes\n"
+            ."2026-08-01 08:30,1,0,,\n"
+            ."2026-08-01 12:15,0,1,hard,\n"
+            ."2026-08-01 14:00,1,0,,\n";
+
+        $this->post(route('babies.import.diapers', $baby), [
+            'file' => UploadedFile::fake()->createWithContent('diapers.csv', $csv),
+        ])->assertRedirect(route('babies.import.show', $baby));
+
+        $this->assertDatabaseCount('diaper_entries', 3);
+        $this->assertDatabaseHas('diaper_entries', ['is_wet' => 1, 'consistency' => null]);
+        $this->assertDatabaseHas('diaper_entries', ['is_dirty' => 1, 'consistency' => 'hard']);
+    }
+
     public function test_all_edit_and_index_pages_render_for_a_fully_populated_baby(): void
     {
         $user = User::factory()->create();

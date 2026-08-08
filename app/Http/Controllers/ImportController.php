@@ -106,7 +106,18 @@ class ImportController extends Controller
                 continue;
             }
 
-            $data = array_map(fn ($value) => is_string($value) ? trim($value) : $value, array_combine($header, $row));
+            $data = array_map(function ($value) {
+                if (! is_string($value)) {
+                    return $value;
+                }
+
+                $value = trim($value);
+
+                // Blank CSV cells become empty strings, not null — that's fine
+                // for most columns, but a strict enum column (e.g. diaper
+                // consistency) rejects "" as neither a valid value nor NULL.
+                return $value !== '' ? $value : null;
+            }, array_combine($header, $row));
 
             try {
                 if ($callback($data)) {
