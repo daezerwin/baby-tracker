@@ -19,6 +19,7 @@ state([
     'quickDiaperAt' => null,
     'quickDiaperConsistency' => null,
     'quickDiaperNotes' => null,
+    'chartWeekOffset' => 0,
 ]);
 
 mount(function () {
@@ -73,15 +74,31 @@ $weightStatus = computed(function () {
     return WeightReference::classify((float) $latest->weight_kg, $ageInMonths, $sex);
 });
 
+$chartWindowEnd = computed(fn () => now()->subDays(7 * $this->chartWeekOffset)->endOfDay());
+
+$chartWindowStart = computed(fn () => $this->chartWindowEnd->copy()->subDays(6)->startOfDay());
+
+$chartRangeLabel = computed(function () {
+    $start = $this->chartWindowStart;
+    $end = $this->chartWindowEnd;
+
+    return $start->format('Y') === $end->format('Y')
+        ? $start->format('M j').' – '.$end->format('M j')
+        : $start->format('M j, Y').' – '.$end->format('M j, Y');
+});
+
 $diaperTrend = computed(function () {
     if (! $this->baby) {
         return collect();
     }
 
-    $entries = $this->baby->diaperEntries()->where('occurred_at', '>=', now()->subDays(6)->startOfDay())->get();
+    $start = $this->chartWindowStart;
+    $end = $this->chartWindowEnd;
 
-    return collect(range(6, 0))->map(function ($daysAgo) use ($entries) {
-        $day = now()->subDays($daysAgo);
+    $entries = $this->baby->diaperEntries()->whereBetween('occurred_at', [$start, $end])->get();
+
+    return collect(range(6, 0))->map(function ($daysAgo) use ($entries, $end) {
+        $day = $end->copy()->subDays($daysAgo);
         $dayEntries = $entries->filter(fn ($entry) => $entry->occurred_at->isSameDay($day));
 
         return [
@@ -97,10 +114,13 @@ $feedTrend = computed(function () {
         return collect();
     }
 
-    $entries = $this->baby->feedEntries()->where('fed_at', '>=', now()->subDays(6)->startOfDay())->get();
+    $start = $this->chartWindowStart;
+    $end = $this->chartWindowEnd;
 
-    return collect(range(6, 0))->map(function ($daysAgo) use ($entries) {
-        $day = now()->subDays($daysAgo);
+    $entries = $this->baby->feedEntries()->whereBetween('fed_at', [$start, $end])->get();
+
+    return collect(range(6, 0))->map(function ($daysAgo) use ($entries, $end) {
+        $day = $end->copy()->subDays($daysAgo);
 
         return [
             'label' => $day->format('D'),
@@ -108,6 +128,16 @@ $feedTrend = computed(function () {
         ];
     })->values();
 });
+
+$prevChartWeek = function () {
+    $this->chartWeekOffset++;
+};
+
+$nextChartWeek = function () {
+    if ($this->chartWeekOffset > 0) {
+        $this->chartWeekOffset--;
+    }
+};
 
 $resetQuickForms = function () {
     $this->quickFeedType = 'bottle';
@@ -186,6 +216,7 @@ $saveDiaper = function () {
     $photos = $this->photos;
     $diaperTrend = $this->diaperTrend;
     $feedTrend = $this->feedTrend;
+    $chartRangeLabel = $this->chartRangeLabel;
     $weightChart = $this->weightChart;
     $weightStatus = $this->weightStatus;
 @endphp
@@ -325,15 +356,27 @@ $saveDiaper = function () {
                 </div>
             </div>
 
+            <div class="flex items-center justify-between gap-3">
+                <button type="button" wire:click="prevChartWeek"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">
+                    ‹
+                </button>
+                <p class="text-sm font-medium text-gray-600">{{ $chartRangeLabel }}</p>
+                <button type="button" wire:click="nextChartWeek" @if ($this->chartWeekOffset === 0) disabled @endif
+                        class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+                    ›
+                </button>
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <x-card class="p-6">
                     <p class="font-semibold text-gray-800 mb-1">Diaper Activity</p>
-                    <p class="text-xs text-gray-400 mb-3">Last 7 days</p>
+                    <p class="text-xs text-gray-400 mb-3">{{ $chartRangeLabel }}</p>
                     <div class="flex items-center gap-4 text-xs text-gray-500 mb-2">
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Pee</span>
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span> Poop</span>
                     </div>
-                    <div wire:key="diaper-trend-{{ $diaperTrend->pluck('pee')->sum() }}-{{ $diaperTrend->pluck('poop')->sum() }}" style="height: 160px;">
+                    <div wire:key="diaper-trend-{{ $this->chartWeekOffset }}-{{ $diaperTrend->pluck('pee')->sum() }}-{{ $diaperTrend->pluck('poop')->sum() }}" style="height: 160px;">
                         <canvas
                             x-data
                             x-init="new window.Chart($el.getContext('2d'), {
@@ -361,9 +404,9 @@ $saveDiaper = function () {
 
                 <x-card class="p-6">
                     <p class="font-semibold text-gray-800 mb-1">Feeding Activity</p>
-                    <p class="text-xs text-gray-400 mb-3">Bottle ounces · Last 7 days</p>
+                    <p class="text-xs text-gray-400 mb-3">Bottle ounces · {{ $chartRangeLabel }}</p>
                     <div class="h-[1.375rem] mb-2"></div>
-                    <div wire:key="feed-trend-{{ $feedTrend->pluck('oz')->sum() }}" style="height: 160px;">
+                    <div wire:key="feed-trend-{{ $this->chartWeekOffset }}-{{ $feedTrend->pluck('oz')->sum() }}" style="height: 160px;">
                         <canvas
                             x-data
                             x-init="new window.Chart($el.getContext('2d'), {

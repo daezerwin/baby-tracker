@@ -44,6 +44,34 @@ class BabyTrackerFlowTest extends TestCase
             ->assertSee($baby->name);
     }
 
+    public function test_dashboard_chart_week_navigation_moves_the_trend_window(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $baby->diaperEntries()->create(['is_wet' => true, 'is_dirty' => false, 'occurred_at' => now()]);
+        $baby->diaperEntries()->create(['is_wet' => false, 'is_dirty' => true, 'occurred_at' => now()->subWeek()]);
+
+        session(['current_baby_id' => $baby->id]);
+        $this->actingAs($user);
+
+        $component = Volt::test('dashboard');
+
+        $thisWeek = $component->get('diaperTrend');
+        $this->assertSame(1, $thisWeek->pluck('pee')->sum());
+        $this->assertSame(0, $thisWeek->pluck('poop')->sum());
+
+        $component->call('prevChartWeek');
+
+        $lastWeek = $component->get('diaperTrend');
+        $this->assertSame(0, $lastWeek->pluck('pee')->sum());
+        $this->assertSame(1, $lastWeek->pluck('poop')->sum());
+
+        // Can't navigate past the current week.
+        $component->call('nextChartWeek')->call('nextChartWeek');
+        $this->assertSame(0, $component->get('chartWeekOffset'));
+    }
+
     public function test_dashboard_shows_weight_chart_with_median_status_and_no_guide_card(): void
     {
         $user = User::factory()->create();
