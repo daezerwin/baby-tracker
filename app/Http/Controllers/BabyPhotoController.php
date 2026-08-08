@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Baby;
 use App\Models\BabyPhoto;
 use App\Services\ExifDateExtractor;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -22,44 +23,38 @@ class BabyPhotoController extends Controller
         ]);
     }
 
-    public function store(Request $request, Baby $baby): RedirectResponse
+    public function store(Request $request, Baby $baby): RedirectResponse|JsonResponse
     {
         $this->authorize('update', $baby);
 
         $validated = $request->validate([
-            'photo' => ['required_without:photos', 'nullable', 'image', 'max:8192'],
-            'photos' => ['required_without:photo', 'nullable', 'array', 'min:1'],
-            'photos.*' => ['image', 'max:8192'],
+            'photo' => ['required', 'image', 'max:8192'],
             'caption' => ['nullable', 'string', 'max:255'],
             'taken_at' => ['nullable', 'date'],
         ]);
 
-        $files = $request->hasFile('photos') ? $request->file('photos') : [$request->file('photo')];
+        $file = $request->file('photo');
+        $takenAt = $validated['taken_at'] ?? ExifDateExtractor::extract($file) ?? now();
 
-        $lastPhoto = null;
+        $path = $file->store('baby-photos', 'public');
 
-        foreach ($files as $file) {
-            $takenAt = $validated['taken_at'] ?? ExifDateExtractor::extract($file) ?? now();
+        $photo = $baby->photos()->create([
+            'path' => $path,
+            'caption' => $validated['caption'] ?? null,
+            'taken_at' => $takenAt,
+        ]);
 
-            $path = $file->store('baby-photos', 'public');
-
-            $lastPhoto = $baby->photos()->create([
-                'path' => $path,
-                'caption' => $validated['caption'] ?? null,
-                'taken_at' => $takenAt,
-            ]);
+        if ($request->boolean('set_as_profile')) {
+            $baby->photos()->whereKeyNot($photo->id)->update(['is_profile' => false]);
+            $photo->update(['is_profile' => true]);
+            $baby->update(['profile_photo_path' => $photo->path]);
         }
 
-        if ($request->boolean('set_as_profile') && $lastPhoto) {
-            $baby->photos()->whereKeyNot($lastPhoto->id)->update(['is_profile' => false]);
-            $lastPhoto->update(['is_profile' => true]);
-            $baby->update(['profile_photo_path' => $lastPhoto->path]);
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'ok', 'id' => $photo->id]);
         }
 
-        $count = count($files);
-
-        return back(fallback: route('babies.photos.index', $baby))
-            ->with('status', $count === 1 ? 'Photo uploaded.' : "{$count} photos uploaded.");
+        return back(fallback: route('babies.photos.index', $baby))->with('status', 'Photo uploaded.');
     }
 
     public function setProfile(Baby $baby, BabyPhoto $photo): RedirectResponse

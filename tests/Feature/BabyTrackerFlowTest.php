@@ -371,20 +371,23 @@ class BabyTrackerFlowTest extends TestCase
         $this->assertTrue($photo->taken_at->isToday());
     }
 
-    public function test_user_can_upload_multiple_photos_at_once(): void
+    public function test_user_can_upload_several_photos_one_request_at_a_time(): void
     {
+        // Selecting multiple files uploads them as separate sequential
+        // requests (one small POST per photo) rather than one large
+        // multi-file POST, to avoid hitting post_max_size on the server.
         Storage::fake('public');
 
         $user = User::factory()->create();
         $baby = Baby::factory()->for($user)->create();
 
-        $this->actingAs($user)->post(route('babies.photos.store', $baby), [
-            'photos' => [
-                UploadedFile::fake()->image('one.jpg'),
-                UploadedFile::fake()->image('two.jpg'),
-                UploadedFile::fake()->image('three.jpg'),
-            ],
-        ])->assertRedirect(route('babies.photos.index', $baby));
+        $this->actingAs($user);
+
+        foreach (['one.jpg', 'two.jpg', 'three.jpg'] as $name) {
+            $this->postJson(route('babies.photos.store', $baby), [
+                'photo' => UploadedFile::fake()->image($name),
+            ])->assertOk();
+        }
 
         $this->assertSame(3, $baby->photos()->count());
         $baby->photos()->get()->each(fn ($photo) => Storage::disk('public')->assertExists($photo->path));

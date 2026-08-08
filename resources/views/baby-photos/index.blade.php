@@ -9,32 +9,81 @@
         @endif
 
         <x-card class="p-7">
-            <form method="POST" action="{{ route('babies.photos.store', $baby) }}" enctype="multipart/form-data" class="space-y-4">
+            <form
+                x-data="{
+                    uploading: false,
+                    total: 0,
+                    done: 0,
+                    failed: 0,
+                    async submit(event) {
+                        const form = event.target;
+                        const files = form.photos.files;
+                        if (! files.length) return;
+
+                        this.uploading = true;
+                        this.total = files.length;
+                        this.done = 0;
+                        this.failed = 0;
+
+                        const caption = form.caption.value;
+                        const takenAt = form.taken_at.value;
+                        const token = document.querySelector('meta[name=csrf-token]').content;
+
+                        for (const file of files) {
+                            const data = new FormData();
+                            data.append('photo', file);
+                            if (caption) data.append('caption', caption);
+                            if (takenAt) data.append('taken_at', takenAt);
+
+                            try {
+                                const response = await fetch(form.action, {
+                                    method: 'POST',
+                                    headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                                    body: data,
+                                });
+                                response.ok ? this.done++ : this.failed++;
+                            } catch (e) {
+                                this.failed++;
+                            }
+                        }
+
+                        window.location.reload();
+                    },
+                }"
+                x-on:submit.prevent="submit($event)"
+                method="POST" action="{{ route('babies.photos.store', $baby) }}" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 <div>
                     <x-input-label for="photos" value="Upload photos" />
-                    <input id="photos" name="photos[]" type="file" accept="image/*" multiple required
-                           class="mt-1 block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-medium hover:file:bg-blue-100" />
-                    <p class="text-xs text-gray-400 mt-1">Select multiple photos at once to upload them all together.</p>
+                    <input id="photos" name="photos" type="file" accept="image/*" multiple required x-bind:disabled="uploading"
+                           class="mt-1 block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-medium hover:file:bg-blue-100 disabled:opacity-50" />
+                    <p class="text-xs text-gray-400 mt-1">Select multiple photos — each is uploaded as its own request, one at a time, so large batches don't hit request size limits.</p>
                     <x-input-error :messages="$errors->get('photo')" class="mt-1" />
-                    <x-input-error :messages="$errors->get('photos')" class="mt-1" />
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <x-input-label for="caption" value="Caption (optional)" />
-                        <x-text-input id="caption" name="caption" type="text" class="mt-1 block w-full" />
+                        <x-text-input id="caption" name="caption" type="text" class="mt-1 block w-full" x-bind:disabled="uploading" />
                         <p class="text-xs text-gray-400 mt-1">Applied to every photo in this upload.</p>
                         <x-input-error :messages="$errors->get('caption')" class="mt-1" />
                     </div>
                     <div>
                         <x-input-label for="taken_at" value="Date taken (optional)" />
-                        <x-text-input id="taken_at" name="taken_at" type="date" class="mt-1 block w-full" />
+                        <x-text-input id="taken_at" name="taken_at" type="date" class="mt-1 block w-full" x-bind:disabled="uploading" />
                         <p class="text-xs text-gray-400 mt-1">Leave blank to auto-detect from each photo's EXIF data, if available.</p>
                         <x-input-error :messages="$errors->get('taken_at')" class="mt-1" />
                     </div>
                 </div>
-                <div class="flex justify-end">
-                    <x-primary-button>Upload</x-primary-button>
+                <div class="flex items-center justify-between gap-3">
+                    <p x-show="uploading" x-cloak class="text-sm text-gray-500">
+                        Uploading <span x-text="done"></span> of <span x-text="total"></span>…
+                        <template x-if="failed"><span class="text-red-500">(<span x-text="failed"></span> failed)</span></template>
+                    </p>
+                    <span></span>
+                    <x-primary-button x-bind:disabled="uploading">
+                        <span x-show="!uploading">Upload</span>
+                        <span x-show="uploading" x-cloak>Uploading…</span>
+                    </x-primary-button>
                 </div>
             </form>
         </x-card>
