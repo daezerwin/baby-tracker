@@ -206,10 +206,6 @@ $saveDiaper = function ($occurredAtUtc = null) {
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         },
      }" x-init="setInterval(() => now = new Date(), 1000)">
-    <x-slot name="header">
-        <x-page-header title="Dashboard" />
-    </x-slot>
-
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         @if ($this->babies->isEmpty())
