@@ -122,13 +122,9 @@ $resetQuickForms = function () {
     $this->quickDiaperNotes = null;
 };
 
-$saveFeed = function ($feedAtUtc = null) {
+$saveFeed = function () {
     if (! $this->baby) {
         return;
-    }
-
-    if ($feedAtUtc) {
-        $this->quickFeedAt = $feedAtUtc;
     }
 
     $this->validate([
@@ -149,13 +145,9 @@ $saveFeed = function ($feedAtUtc = null) {
     $this->resetQuickForms();
 };
 
-$saveDiaper = function ($occurredAtUtc = null) {
+$saveDiaper = function () {
     if (! $this->baby) {
         return;
-    }
-
-    if ($occurredAtUtc) {
-        $this->quickDiaperAt = $occurredAtUtc;
     }
 
     $this->validate([
@@ -205,6 +197,30 @@ $saveDiaper = function ($occurredAtUtc = null) {
             const pad = (n) => String(n).padStart(2, '0');
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         },
+        timeAgo(iso, tick) {
+            void tick; // read `now` so this re-evaluates every tick
+            const diffSec = Math.round((new Date(iso) - new Date()) / 1000);
+            const abs = Math.abs(diffSec);
+            const suffix = diffSec <= 0 ? 'ago' : 'from now';
+            // Show minutes + seconds under an hour so the live tick is visibly
+            // confirmable, not just a once-a-minute jump.
+            if (abs < 3600) {
+                const m = Math.floor(abs / 60);
+                const s = abs % 60;
+                const sLabel = `${s} second${s === 1 ? '' : 's'}`;
+                if (m === 0) return `${sLabel} ${suffix}`;
+                return `${m} minute${m === 1 ? '' : 's'} ${sLabel} ${suffix}`;
+            }
+            const units = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600]];
+            for (const [name, secs] of units) {
+                if (abs >= secs) {
+                    const value = Math.round(abs / secs);
+                    const label = value === 1 ? name : `${name}s`;
+                    return `${value} ${label} ${suffix}`;
+                }
+            }
+            return `${abs} seconds ${suffix}`;
+        },
      }" x-init="setInterval(() => now = new Date(), 1000)">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
@@ -235,10 +251,12 @@ $saveDiaper = function ($occurredAtUtc = null) {
 
                 <x-stat-card label="Last Feed" color="amber"
                     :value="$lastFeed ? $lastFeed->fed_at->diffForHumans() : '—'"
+                    :live-since="$lastFeed?->fed_at?->toJSON()"
                     :meta="$lastFeed ? ucfirst($lastFeed->type).' · '.$lastFeed->fed_at->format('M j, g:i A') : 'Not logged yet'"
                     :link="route('babies.feeds.index', $baby)" link-label="View all feeds" />
                 <x-stat-card label="Last Diaper" color="emerald"
                     :value="$lastDiaper ? $lastDiaper->occurred_at->diffForHumans() : '—'"
+                    :live-since="$lastDiaper?->occurred_at?->toJSON()"
                     :meta="$lastDiaper ? $lastDiaper->label().' · '.$lastDiaper->occurred_at->format('M j, g:i A') : 'Not logged yet'"
                     :link="route('babies.diapers.index', $baby)" link-label="View all diapers" />
             </div>
@@ -429,7 +447,7 @@ $saveDiaper = function ($occurredAtUtc = null) {
 
             <!-- Quick Add Feed Modal -->
             <x-modal name="quick-feed" max-width="sm">
-                <form x-on:submit.prevent="$wire.saveFeed(new Date($wire.quickFeedAt).toISOString()).then(() => $dispatch('close-modal', 'quick-feed'))" class="p-8 space-y-5">
+                <form x-on:submit.prevent="$wire.saveFeed().then(() => $dispatch('close-modal', 'quick-feed'))" class="p-8 space-y-5">
                     <h3 class="text-xl font-semibold text-gray-800">Log a Feed</h3>
 
                     <div>
@@ -477,7 +495,7 @@ $saveDiaper = function ($occurredAtUtc = null) {
 
             <!-- Quick Add Diaper Modal -->
             <x-modal name="quick-diaper" max-width="sm">
-                <form x-on:submit.prevent="$wire.saveDiaper(new Date($wire.quickDiaperAt).toISOString()).then(() => $dispatch('close-modal', 'quick-diaper'))" class="p-8 space-y-5">
+                <form x-on:submit.prevent="$wire.saveDiaper().then(() => $dispatch('close-modal', 'quick-diaper'))" class="p-8 space-y-5">
                     <h3 class="text-xl font-semibold text-gray-800">Log a Diaper Change</h3>
 
                     <div>

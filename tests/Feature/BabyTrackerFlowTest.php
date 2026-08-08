@@ -135,24 +135,25 @@ class BabyTrackerFlowTest extends TestCase
         ]);
     }
 
-    public function test_dashboard_quick_add_respects_client_local_time_converted_to_utc(): void
+    public function test_dashboard_quick_add_saves_the_exact_wall_clock_time_entered(): void
     {
+        // The app's default timezone (config('app.timezone')) is set to the
+        // family's real timezone, so a datetime-local input's wall-clock value
+        // can be saved as-is with no UTC conversion — converting it would
+        // shift it by the local/UTC offset and produce the wrong instant.
         $user = User::factory()->create();
         $baby = Baby::factory()->for($user)->create();
         session(['current_baby_id' => $baby->id]);
 
         $this->actingAs($user);
 
-        // Simulates the browser converting the datetime-local input's wall-clock
-        // value to a UTC instant (new Date(value).toISOString()) before the
-        // Livewire action call, since the app runs in UTC but a caregiver's
-        // browser is usually in a different offset.
-        $utcInstant = '2026-01-15T10:30:00.000Z';
+        $enteredAt = '2026-01-15T10:30';
 
         Volt::test('dashboard')
             ->set('quickFeedType', 'bottle')
             ->set('quickFeedAmount', 4)
-            ->call('saveFeed', $utcInstant);
+            ->set('quickFeedAt', $enteredAt)
+            ->call('saveFeed');
 
         $this->assertDatabaseHas('feed_entries', [
             'baby_id' => $baby->id,
@@ -161,7 +162,8 @@ class BabyTrackerFlowTest extends TestCase
 
         Volt::test('dashboard')
             ->set('quickDiaperIsWet', true)
-            ->call('saveDiaper', $utcInstant);
+            ->set('quickDiaperAt', $enteredAt)
+            ->call('saveDiaper');
 
         $this->assertDatabaseHas('diaper_entries', [
             'baby_id' => $baby->id,

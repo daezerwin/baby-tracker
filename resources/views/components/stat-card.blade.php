@@ -1,4 +1,4 @@
-@props(['label', 'value', 'meta' => null, 'color' => 'blue', 'icon' => null, 'link' => null, 'linkLabel' => 'View all'])
+@props(['label', 'value', 'meta' => null, 'color' => 'blue', 'icon' => null, 'link' => null, 'linkLabel' => 'View all', 'liveSince' => null])
 
 @php
     $colors = [
@@ -19,7 +19,11 @@
     @endif
     <div class="min-w-0">
         <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">{{ $label }}</p>
-        <p class="text-2xl font-semibold text-gray-800 truncate mt-0.5">{{ $value }}</p>
+        @if ($liveSince)
+            <p class="text-2xl font-semibold text-gray-800 truncate mt-0.5" x-text="timeAgo('{{ $liveSince }}', now)">{{ $value }}</p>
+        @else
+            <p class="text-2xl font-semibold text-gray-800 truncate mt-0.5">{{ $value }}</p>
+        @endif
         @if ($meta)
             <p class="text-sm text-gray-400 mt-1">{{ $meta }}</p>
         @endif
