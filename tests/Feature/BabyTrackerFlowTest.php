@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Baby;
+use App\Models\BabyPhoto;
 use App\Models\DiaperEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -391,6 +392,21 @@ class BabyTrackerFlowTest extends TestCase
 
         $this->assertSame(3, $baby->photos()->count());
         $baby->photos()->get()->each(fn ($photo) => Storage::disk('public')->assertExists($photo->path));
+    }
+
+    public function test_photo_gallery_paginates_large_libraries(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        BabyPhoto::factory()->for($baby)->count(75)->create();
+
+        $response = $this->actingAs($user)->get(route('babies.photos.index', $baby))->assertOk();
+
+        $this->assertCount(60, $response->viewData('photos'));
+        $response->assertSee('Next');
     }
 
     public function test_user_can_upload_and_set_profile_photo(): void

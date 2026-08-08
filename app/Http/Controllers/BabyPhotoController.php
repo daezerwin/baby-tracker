@@ -19,7 +19,7 @@ class BabyPhotoController extends Controller
 
         return view('baby-photos.index', [
             'baby' => $baby,
-            'photos' => $baby->photos()->get(),
+            'photos' => $baby->photos()->paginate(60),
         ]);
     }
 
@@ -28,7 +28,7 @@ class BabyPhotoController extends Controller
         $this->authorize('update', $baby);
 
         $validated = $request->validate([
-            'photo' => ['required', 'image', 'max:8192'],
+            'photo' => ['required', 'image', 'max:16384'],
             'caption' => ['nullable', 'string', 'max:255'],
             'taken_at' => ['nullable', 'date'],
         ]);

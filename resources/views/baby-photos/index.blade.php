@@ -126,6 +126,10 @@
                     <img :src="lightbox" class="max-h-full max-w-full rounded-lg">
                 </div>
             </div>
+
+            <div class="mt-2">
+                {{ $photos->links() }}
+            </div>
         @endif
     </div>
 </x-app-layout>
