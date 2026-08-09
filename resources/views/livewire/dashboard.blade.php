@@ -356,7 +356,7 @@ $saveDiaper = function () {
                     <div wire:key="diaper-trend-{{ $this->chartWeekOffset }}-{{ $diaperTrend->pluck('pee')->sum() }}-{{ $diaperTrend->pluck('poop')->sum() }}" style="height: 160px;">
                         <canvas
                             x-data
-                            x-init="new window.Chart($el.getContext('2d'), {
+                            x-init="window.whenChartReady(() => new window.Chart($el.getContext('2d'), {
                                 type: 'bar',
                                 data: {
                                     labels: {{ Js::from($diaperTrend->pluck('label')) }},
@@ -374,7 +374,7 @@ $saveDiaper = function () {
                                         y: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: '#9ca3af', font: { size: 11 } }, grid: { color: '#f3f4f6' } },
                                     },
                                 },
-                            })"
+                            }))"
                         ></canvas>
                     </div>
                 </x-card>
@@ -386,7 +386,7 @@ $saveDiaper = function () {
                     <div wire:key="feed-trend-{{ $this->chartWeekOffset }}-{{ $feedTrend->pluck('oz')->sum() }}" style="height: 160px;">
                         <canvas
                             x-data
-                            x-init="new window.Chart($el.getContext('2d'), {
+                            x-init="window.whenChartReady(() => new window.Chart($el.getContext('2d'), {
                                 type: 'bar',
                                 data: {
                                     labels: {{ Js::from($feedTrend->pluck('label')) }},
@@ -409,7 +409,7 @@ $saveDiaper = function () {
                                         y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => v + ' oz' }, grid: { color: '#f3f4f6' } },
                                     },
                                 },
-                            })"
+                            }))"
                         ></canvas>
                     </div>
                 </x-card>
@@ -440,7 +440,7 @@ $saveDiaper = function () {
                     <div wire:key="weight-chart-{{ $weightChart->pluck('actual')->sum() }}" style="height: 220px;">
                         <canvas
                             x-data
-                            x-init="new window.Chart($el.getContext('2d'), {
+                            x-init="window.whenChartReady(() => new window.Chart($el.getContext('2d'), {
                                 type: 'line',
                                 data: {
                                     labels: {{ Js::from($weightChart->pluck('label')) }},
@@ -458,7 +458,7 @@ $saveDiaper = function () {
                                         y: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#f3f4f6' } },
                                     },
                                 },
-                            })"
+                            }))"
                         ></canvas>
                     </div>
                     <p class="text-xs text-gray-400 mt-3">General reference only, based on typical growth patterns — not a medical assessment. Talk to your pediatrician about any concerns.</p>

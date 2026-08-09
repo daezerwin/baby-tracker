@@ -93,12 +93,13 @@
                 <x-empty-state title="No photos yet" subtitle="Upload your first photo to start the gallery." />
             </x-card>
         @else
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" x-data="{ lightbox: null }">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" x-data x-init="window.whenLightGalleryReady(() => window.initPhotoGallery($el))">
                 @foreach ($photos as $photo)
                     <div class="relative group rounded-xl overflow-hidden bg-gray-100 aspect-square">
-                        <img src="{{ $photo->url() }}" alt="{{ $photo->caption ?? $baby->name }}"
-                             class="w-full h-full object-cover cursor-pointer"
-                             x-on:click="lightbox = '{{ $photo->url() }}'">
+                        <a href="{{ $photo->url() }}" class="lg-item block w-full h-full" @if ($photo->caption) data-sub-html="{{ $photo->caption }}" @endif>
+                            <img src="{{ $photo->url() }}" alt="{{ $photo->caption ?? $baby->name }}"
+                                 class="w-full h-full object-cover cursor-pointer">
+                        </a>
 
                         @if ($photo->is_profile)
                             <span class="absolute top-1.5 left-1.5 text-[10px] bg-amber-400 text-gray-900 px-1.5 py-0.5 rounded-full font-semibold">Profile</span>
@@ -120,11 +121,6 @@
                         </div>
                     </div>
                 @endforeach
-
-                <div x-show="lightbox" x-on:click="lightbox = null" x-cloak
-                     class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-6">
-                    <img :src="lightbox" class="max-h-full max-w-full rounded-lg">
-                </div>
             </div>
 
             <div class="mt-2">
