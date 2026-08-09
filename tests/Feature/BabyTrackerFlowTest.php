@@ -165,6 +165,42 @@ class BabyTrackerFlowTest extends TestCase
         ]);
     }
 
+    public function test_dashboard_quick_add_only_closes_the_modal_on_actual_success(): void
+    {
+        // The modal used to close via a client-side .then() on the Livewire
+        // call, which fires even when the server-side save silently failed
+        // validation (e.g. neither pee nor poop checked) — the request still
+        // resolves normally, so the modal closed and hid the error message.
+        // Closing is now an explicit server-side dispatch on the success
+        // path only.
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+        session(['current_baby_id' => $baby->id]);
+
+        $this->actingAs($user);
+
+        Volt::test('dashboard')
+            ->set('quickFeedType', 'bottle')
+            ->set('quickFeedAt', now()->format('Y-m-d\TH:i'))
+            ->set('quickFeedAmount', 4)
+            ->call('saveFeed')
+            ->assertDispatched('close-modal', 'quick-feed');
+
+        Volt::test('dashboard')
+            ->set('quickDiaperIsWet', false)
+            ->set('quickDiaperIsDirty', false)
+            ->set('quickDiaperAt', now()->format('Y-m-d\TH:i'))
+            ->call('saveDiaper')
+            ->assertHasErrors('quickDiaperIsWet')
+            ->assertNotDispatched('close-modal');
+
+        Volt::test('dashboard')
+            ->set('quickDiaperIsWet', true)
+            ->set('quickDiaperAt', now()->format('Y-m-d\TH:i'))
+            ->call('saveDiaper')
+            ->assertDispatched('close-modal', 'quick-diaper');
+    }
+
     public function test_dashboard_quick_add_saves_the_exact_wall_clock_time_entered(): void
     {
         // The app's default timezone (config('app.timezone')) is set to the

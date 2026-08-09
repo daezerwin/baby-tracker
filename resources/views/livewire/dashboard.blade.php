@@ -173,6 +173,12 @@ $saveFeed = function () {
     ]);
 
     $this->resetQuickForms();
+
+    // Close the modal from the server, only on this confirmed-success path —
+    // closing it from a client-side .then() on the Livewire call fired even
+    // when saving failed (e.g. the addError() case below), since that
+    // request still resolves normally.
+    $this->dispatch('close-modal', 'quick-feed');
 };
 
 $saveDiaper = function () {
@@ -202,6 +208,7 @@ $saveDiaper = function () {
     ]);
 
     $this->resetQuickForms();
+    $this->dispatch('close-modal', 'quick-diaper');
 };
 
 ?>
@@ -460,7 +467,7 @@ $saveDiaper = function () {
 
             <!-- Quick Add Feed Modal -->
             <x-modal name="quick-feed" max-width="sm">
-                <form x-on:submit.prevent="$wire.saveFeed().then(() => $dispatch('close-modal', 'quick-feed'))" class="p-8 space-y-5">
+                <form x-on:submit.prevent="$wire.saveFeed()" class="p-8 space-y-5">
                     <h3 class="text-xl font-semibold text-gray-800">Log a Feed</h3>
 
                     <div>
@@ -516,7 +523,7 @@ $saveDiaper = function () {
 
             <!-- Quick Add Diaper Modal -->
             <x-modal name="quick-diaper" max-width="sm">
-                <form x-on:submit.prevent="$wire.saveDiaper().then(() => $dispatch('close-modal', 'quick-diaper'))" class="p-8 space-y-5">
+                <form x-on:submit.prevent="$wire.saveDiaper()" class="p-8 space-y-5">
                     <h3 class="text-xl font-semibold text-gray-800">Log a Diaper Change</h3>
 
                     <div>
