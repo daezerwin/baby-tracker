@@ -34,6 +34,14 @@
                 {{ $slot }}
             </main>
 
+            @php
+                $appVersion = config('app.version', 'dev');
+                $appVersion = preg_match('/^v?\d/', $appVersion) ? 'v'.ltrim($appVersion, 'v') : $appVersion;
+            @endphp
+            <footer class="text-center text-xs text-gray-400 pb-24 sm:pb-6">
+                &copy; {{ now()->year }} {{ config('app.name', 'Baby Tracker') }} &middot; {{ $appVersion }}
+            </footer>
+
             <x-bottom-nav />
         </div>
     </body>

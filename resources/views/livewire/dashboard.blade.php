@@ -252,6 +252,7 @@ $saveDiaper = function () {
                 <x-stat-card label="Last Feed" color="amber"
                     :value="$lastFeed ? $lastFeed->fed_at->diffForHumans() : '—'"
                     :live-since="$lastFeed?->fed_at?->toJSON()"
+                    :subvalue="$lastFeed?->formattedAmount()"
                     :meta="$lastFeed ? ucfirst($lastFeed->type).' · '.$lastFeed->fed_at->format('M j, g:i A') : 'Not logged yet'"
                     :link="route('babies.feeds.index', $baby)" link-label="View all feeds" />
                 <x-stat-card label="Last Diaper" color="emerald"

@@ -69,6 +69,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Version
+    |--------------------------------------------------------------------------
+    |
+    | Baked into the Docker image at build time from the git tag that
+    | triggered the release (see .github/workflows/docker-publish.yml and
+    | the Dockerfile's APP_VERSION build arg). Shown in the app footer.
+    |
+    */
+
+    'version' => env('APP_VERSION', 'dev'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

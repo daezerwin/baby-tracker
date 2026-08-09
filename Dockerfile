@@ -35,6 +35,9 @@ RUN composer install \
 # ---------------------------------------------------------------------------
 FROM php:8.4-apache AS app
 
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libsqlite3-dev \
         libzip-dev \

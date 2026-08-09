@@ -1,4 +1,4 @@
-@props(['label', 'value', 'meta' => null, 'color' => 'blue', 'icon' => null, 'link' => null, 'linkLabel' => 'View all', 'liveSince' => null])
+@props(['label', 'value', 'subvalue' => null, 'meta' => null, 'color' => 'blue', 'icon' => null, 'link' => null, 'linkLabel' => 'View all', 'liveSince' => null])
 
 @php
     $colors = [
@@ -23,6 +23,9 @@
             <p class="text-2xl font-semibold text-gray-800 truncate mt-0.5" x-data x-text="$store.clock.timeAgo('{{ $liveSince }}')">{{ $value }}</p>
         @else
             <p class="text-2xl font-semibold text-gray-800 truncate mt-0.5">{{ $value }}</p>
+        @endif
+        @if ($subvalue)
+            <h3 class="text-base font-semibold text-gray-600 mt-0.5">{{ $subvalue }}</h3>
         @endif
         @if ($meta)
             <p class="text-sm text-gray-400 mt-1">{{ $meta }}</p>

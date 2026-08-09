@@ -449,6 +449,20 @@ class BabyTrackerFlowTest extends TestCase
         $this->assertSame($photo->path, $baby->fresh()->profile_photo_path);
     }
 
+    public function test_feed_entry_formats_amount_by_trimming_trailing_zeros(): void
+    {
+        $user = User::factory()->create();
+        $baby = Baby::factory()->for($user)->create();
+
+        $whole = $baby->feedEntries()->create(['type' => 'bottle', 'fed_at' => now(), 'amount_oz' => 2]);
+        $fractional = $baby->feedEntries()->create(['type' => 'bottle', 'fed_at' => now(), 'amount_oz' => 3.5]);
+        $none = $baby->feedEntries()->create(['type' => 'breast', 'fed_at' => now()]);
+
+        $this->assertSame('2oz', $whole->formattedAmount());
+        $this->assertSame('3.5oz', $fractional->formattedAmount());
+        $this->assertNull($none->formattedAmount());
+    }
+
     public function test_user_can_create_a_story_with_caption_only(): void
     {
         $user = User::factory()->create();

@@ -21,4 +21,13 @@ class FeedEntry extends Model
     {
         return $this->belongsTo(Baby::class);
     }
+
+    public function formattedAmount(): ?string
+    {
+        if ($this->amount_oz === null) {
+            return null;
+        }
+
+        return rtrim(rtrim((string) $this->amount_oz, '0'), '.').'oz';
+    }
 }
