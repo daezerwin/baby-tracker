@@ -1,8 +1,6 @@
 <?php
 
-use App\Services\WeightReference;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Js;
 use function Livewire\Volt\{state, computed, mount, layout};
 
 layout('layouts.app');
@@ -36,43 +34,6 @@ $baby = computed(function () {
 $age = computed(fn () => $this->baby?->age());
 $lastFeed = computed(fn () => $this->baby?->feedEntries()->first());
 $lastDiaper = computed(fn () => $this->baby?->diaperEntries()->first());
-$photos = computed(fn () => $this->baby?->photos);
-
-$weightChart = computed(function () {
-    if (! $this->baby) {
-        return collect();
-    }
-
-    $sex = in_array($this->baby->sex, ['male', 'female'], true) ? $this->baby->sex : 'other';
-    $dob = $this->baby->date_of_birth;
-
-    return $this->baby->weightEntries()->orderBy('measured_at')->get()->map(function ($entry) use ($dob, $sex) {
-        $ageInMonths = $dob->diffInDays($entry->measured_at) / 30.4375;
-
-        return [
-            'label' => $entry->measured_at->format('M j'),
-            'actual' => (float) $entry->weight_kg,
-            'median' => WeightReference::medianForAge($ageInMonths, $sex),
-        ];
-    })->values();
-});
-
-$weightStatus = computed(function () {
-    if (! $this->baby) {
-        return null;
-    }
-
-    $latest = $this->baby->weightEntries()->latest('measured_at')->first();
-
-    if (! $latest) {
-        return null;
-    }
-
-    $sex = in_array($this->baby->sex, ['male', 'female'], true) ? $this->baby->sex : 'other';
-    $ageInMonths = $this->baby->date_of_birth->diffInDays($latest->measured_at) / 30.4375;
-
-    return WeightReference::classify((float) $latest->weight_kg, $ageInMonths, $sex);
-});
 
 $chartWindowEnd = computed(fn () => now()->subDays(7 * $this->chartWeekOffset)->endOfDay());
 
@@ -220,12 +181,9 @@ $saveDiaper = function () {
     $age = $this->age;
     $lastFeed = $this->lastFeed;
     $lastDiaper = $this->lastDiaper;
-    $photos = $this->photos;
     $diaperTrend = $this->diaperTrend;
     $feedTrend = $this->feedTrend;
     $chartRangeLabel = $this->chartRangeLabel;
-    $weightChart = $this->weightChart;
-    $weightStatus = $this->weightStatus;
 @endphp
 
 <div x-data>
@@ -270,67 +228,14 @@ $saveDiaper = function () {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                @if ($photos && $photos->isNotEmpty())
-                    <x-card class="p-3 sm:p-4 overflow-hidden">
-                        <div x-data="{ slide: 0, total: {{ $photos->count() }} }"
-                             x-init="total > 1 && setInterval(() => slide = (slide + 1) % total, 4000)"
-                             class="relative h-56 sm:h-64">
-                            <div class="relative rounded-xl overflow-hidden bg-gray-100 h-full">
-                                @foreach ($photos as $i => $photo)
-                                    <img src="{{ $photo->url() }}" alt="{{ $photo->caption ?? $baby->name }}"
-                                         x-show="slide === {{ $i }}"
-                                         :class="slide === {{ $i }} ? 'animate-kenburns' : ''"
-                                         x-transition:enter="transition ease-out duration-700"
-                                         x-transition:enter-start="opacity-0 scale-110"
-                                         x-transition:enter-end="opacity-100 scale-100"
-                                         class="absolute inset-0 w-full h-full object-cover">
-                                @endforeach
-
-                                @if ($photos->count() > 1)
-                                    <button type="button" x-on:click="slide = (slide - 1 + total) % total"
-                                            class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow z-10">
-                                        <svg class="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                    </button>
-                                    <button type="button" x-on:click="slide = (slide + 1) % total"
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow z-10">
-                                        <svg class="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                @endif
-
-                                @if ($photos->count() > 1)
-                                    <div class="absolute bottom-3 inset-x-0 flex justify-center gap-2 z-10">
-                                        @foreach ($photos as $i => $photo)
-                                            <button type="button" x-on:click="slide = {{ $i }}"
-                                                    :class="slide === {{ $i }} ? 'bg-amber-400 w-6' : 'bg-white/70 w-2'"
-                                                    class="h-2 rounded-full transition-all"></button>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    </x-card>
-                @else
-                    <a href="{{ route('babies.photos.index', $baby) }}" wire:navigate>
-                        <x-card class="p-7 text-center hover:shadow-md transition h-56 sm:h-64 flex items-center justify-center">
-                            <p class="text-base text-gray-500">No photos yet — tap to add your first one.</p>
-                        </x-card>
-                    </a>
-                @endif
-
-                <div class="flex flex-col gap-3 h-full">
-                    <button type="button" x-on:click="$wire.quickFeedAt = $store.clock.localDateTimeInput(); $dispatch('open-modal', 'quick-feed')"
-                            class="flex-1 flex items-center justify-center w-full px-6 py-6 rounded-2xl bg-amber-500 text-white font-semibold text-lg shadow-sm hover:bg-amber-600 hover:shadow-md transition">
-                        + Log Feed
-                    </button>
-                    <button type="button" x-on:click="$wire.quickDiaperAt = $store.clock.localDateTimeInput(); $dispatch('open-modal', 'quick-diaper')"
-                            class="flex-1 flex items-center justify-center w-full px-6 py-6 rounded-2xl bg-emerald-500 text-white font-semibold text-lg shadow-sm hover:bg-emerald-600 hover:shadow-md transition">
-                        + Log Diaper
-                    </button>
-                </div>
+                <button type="button" x-on:click="$wire.quickFeedAt = $store.clock.localDateTimeInput(); $dispatch('open-modal', 'quick-feed')"
+                        class="flex items-center justify-center w-full px-6 py-6 rounded-2xl bg-amber-500 text-white font-semibold text-lg shadow-sm hover:bg-amber-600 hover:shadow-md transition">
+                    + Log Feed
+                </button>
+                <button type="button" x-on:click="$wire.quickDiaperAt = $store.clock.localDateTimeInput(); $dispatch('open-modal', 'quick-diaper')"
+                        class="flex items-center justify-center w-full px-6 py-6 rounded-2xl bg-emerald-500 text-white font-semibold text-lg shadow-sm hover:bg-emerald-600 hover:shadow-md transition">
+                    + Log Diaper
+                </button>
             </div>
 
             <div class="flex items-center justify-between gap-3">
@@ -349,121 +254,42 @@ $saveDiaper = function () {
                 <x-card class="p-6">
                     <p class="font-semibold text-gray-800 mb-1">Diaper Activity</p>
                     <p class="text-xs text-gray-400 mb-3">{{ $chartRangeLabel }}</p>
-                    <div class="flex items-center gap-4 text-xs text-gray-500 mb-2">
+                    <div class="flex items-center gap-4 text-xs text-gray-500 mb-3">
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Pee</span>
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span> Poop</span>
                     </div>
-                    <div wire:key="diaper-trend-{{ $this->chartWeekOffset }}-{{ $diaperTrend->pluck('pee')->sum() }}-{{ $diaperTrend->pluck('poop')->sum() }}" style="height: 160px;">
-                        <canvas
-                            x-data
-                            x-init="window.whenChartReady(() => new window.Chart($el.getContext('2d'), {
-                                type: 'bar',
-                                data: {
-                                    labels: {{ Js::from($diaperTrend->pluck('label')) }},
-                                    datasets: [
-                                        { label: 'Pee', data: {{ Js::from($diaperTrend->pluck('pee')) }}, backgroundColor: '#3b82f6', borderRadius: 4, maxBarThickness: 16 },
-                                        { label: 'Poop', data: {{ Js::from($diaperTrend->pluck('poop')) }}, backgroundColor: '#d97706', borderRadius: 4, maxBarThickness: 16 },
-                                    ],
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1f2937', padding: 8, cornerRadius: 8 } },
-                                    scales: {
-                                        x: { stacked: true, grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } },
-                                        y: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: '#9ca3af', font: { size: 11 } }, grid: { color: '#f3f4f6' } },
-                                    },
-                                },
-                            }))"
-                        ></canvas>
+                    @php $diaperMax = max(1, $diaperTrend->map(fn ($day) => $day['pee'] + $day['poop'])->max()); @endphp
+                    <div class="space-y-2.5">
+                        @foreach ($diaperTrend as $day)
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-xs font-medium text-gray-500 shrink-0">{{ $day['label'] }}</span>
+                                <div class="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden flex">
+                                    <div class="h-full bg-blue-500" style="width: {{ $day['pee'] / $diaperMax * 100 }}%"></div>
+                                    <div class="h-full bg-amber-600" style="width: {{ $day['poop'] / $diaperMax * 100 }}%"></div>
+                                </div>
+                                <span class="w-16 text-xs text-gray-600 text-right shrink-0 tabular-nums">{{ $day['pee'] }} + {{ $day['poop'] }}</span>
+                            </div>
+                        @endforeach
                     </div>
                 </x-card>
 
                 <x-card class="p-6">
                     <p class="font-semibold text-gray-800 mb-1">Feeding Activity</p>
                     <p class="text-xs text-gray-400 mb-3">Bottle ounces · {{ $chartRangeLabel }}</p>
-                    <div class="h-[1.375rem] mb-2"></div>
-                    <div wire:key="feed-trend-{{ $this->chartWeekOffset }}-{{ $feedTrend->pluck('oz')->sum() }}" style="height: 160px;">
-                        <canvas
-                            x-data
-                            x-init="window.whenChartReady(() => new window.Chart($el.getContext('2d'), {
-                                type: 'bar',
-                                data: {
-                                    labels: {{ Js::from($feedTrend->pluck('label')) }},
-                                    datasets: [
-                                        { label: 'oz', data: {{ Js::from($feedTrend->pluck('oz')) }}, backgroundColor: '#f59e0b', borderRadius: 4, maxBarThickness: 24 },
-                                    ],
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: { display: false },
-                                        tooltip: {
-                                            backgroundColor: '#1f2937', padding: 8, cornerRadius: 8,
-                                            callbacks: { label: (ctx) => ctx.parsed.y + ' oz' },
-                                        },
-                                    },
-                                    scales: {
-                                        x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } },
-                                        y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => v + ' oz' }, grid: { color: '#f3f4f6' } },
-                                    },
-                                },
-                            }))"
-                        ></canvas>
+                    @php $feedMax = max(1, $feedTrend->pluck('oz')->max()); @endphp
+                    <div class="space-y-2.5">
+                        @foreach ($feedTrend as $day)
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-xs font-medium text-gray-500 shrink-0">{{ $day['label'] }}</span>
+                                <div class="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
+                                    <div class="h-full rounded-full bg-amber-500" style="width: {{ $day['oz'] / $feedMax * 100 }}%"></div>
+                                </div>
+                                <span class="w-16 text-xs text-gray-600 text-right shrink-0 tabular-nums">{{ rtrim(rtrim(number_format($day['oz'], 1), '0'), '.') }} oz</span>
+                            </div>
+                        @endforeach
                     </div>
                 </x-card>
             </div>
-
-            <x-card class="p-6">
-                <div class="flex items-start justify-between gap-3 mb-1">
-                    <div>
-                        <a href="{{ route('babies.growth', $baby) }}" wire:navigate class="font-semibold text-lg text-gray-800 hover:text-blue-700">Growth Chart</a>
-                        <p class="text-xs text-gray-400">Weight vs. typical median for age</p>
-                    </div>
-                    @if ($weightStatus)
-                        <span @class([
-                            'text-xs font-semibold px-2.5 py-1 rounded-full shrink-0',
-                            'bg-emerald-50 text-emerald-700' => $weightStatus['color'] === 'emerald',
-                            'bg-amber-50 text-amber-700' => $weightStatus['color'] === 'amber',
-                        ])>{{ $weightStatus['label'] }}</span>
-                    @endif
-                </div>
-
-                @if ($weightChart->count() < 2)
-                    <x-empty-state title="Not enough data yet" subtitle="Log at least two weight entries to see the growth chart." />
-                @else
-                    <div class="flex items-center gap-4 text-xs text-gray-500 my-3">
-                        <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 rounded-full bg-blue-600 inline-block"></span> Baby's weight</span>
-                        <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 rounded-full bg-gray-300 inline-block"></span> Typical median</span>
-                    </div>
-                    <div wire:key="weight-chart-{{ $weightChart->pluck('actual')->sum() }}" style="height: 220px;">
-                        <canvas
-                            x-data
-                            x-init="window.whenChartReady(() => new window.Chart($el.getContext('2d'), {
-                                type: 'line',
-                                data: {
-                                    labels: {{ Js::from($weightChart->pluck('label')) }},
-                                    datasets: [
-                                        { label: 'Weight (kg)', data: {{ Js::from($weightChart->pluck('actual')) }}, borderColor: '#1d4ed8', backgroundColor: 'rgba(29, 78, 216, 0.1)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#1d4ed8', tension: 0.3, fill: true },
-                                        { label: 'Typical median', data: {{ Js::from($weightChart->pluck('median')) }}, borderColor: '#9ca3af', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: 0.3, fill: false },
-                                    ],
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1f2937', padding: 8, cornerRadius: 8 } },
-                                    scales: {
-                                        x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } },
-                                        y: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#f3f4f6' } },
-                                    },
-                                },
-                            }))"
-                        ></canvas>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-3">General reference only, based on typical growth patterns — not a medical assessment. Talk to your pediatrician about any concerns.</p>
-                @endif
-            </x-card>
 
             <!-- Quick Add Feed Modal -->
             <x-modal name="quick-feed" max-width="sm">

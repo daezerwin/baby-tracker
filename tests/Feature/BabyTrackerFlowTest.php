@@ -74,28 +74,6 @@ class BabyTrackerFlowTest extends TestCase
         $this->assertSame(0, $component->get('chartWeekOffset'));
     }
 
-    public function test_dashboard_shows_weight_chart_with_median_status_and_no_guide_card(): void
-    {
-        $user = User::factory()->create();
-        $baby = Baby::factory()->for($user)->create([
-            'sex' => 'male',
-            'date_of_birth' => now()->subMonths(12),
-        ]);
-
-        $baby->weightEntries()->create(['weight_kg' => 9.5, 'measured_at' => now()->subMonth()]);
-        $baby->weightEntries()->create(['weight_kg' => 9.6, 'measured_at' => now()]);
-
-        session(['current_baby_id' => $baby->id]);
-
-        $response = $this->actingAs($user)->get(route('dashboard'));
-
-        $response->assertOk()
-            ->assertSee('Growth Chart')
-            ->assertSee('Normal range')
-            ->assertSee('Typical median')
-            ->assertDontSee("Parent's Guide", false);
-    }
-
     public function test_dashboard_last_feed_and_diaper_cards_link_to_full_lists(): void
     {
         $user = User::factory()->create();
