@@ -252,39 +252,39 @@ $saveDiaper = function () {
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <x-card class="p-6">
-                    <p class="font-semibold text-gray-800 mb-1">Diaper Activity</p>
-                    <p class="text-xs text-gray-400 mb-3">{{ $chartRangeLabel }}</p>
-                    <div class="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                    <p class="font-semibold text-lg text-gray-800 mb-1">Diaper Activity</p>
+                    <p class="text-sm text-gray-400 mb-3">{{ $chartRangeLabel }}</p>
+                    <div class="flex items-center gap-4 text-sm text-gray-500 mb-3">
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Pee</span>
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span> Poop</span>
                     </div>
                     @php $diaperMax = max(1, $diaperTrend->map(fn ($day) => $day['pee'] + $day['poop'])->max()); @endphp
-                    <div class="space-y-2.5">
+                    <div class="space-y-3">
                         @foreach ($diaperTrend as $day)
                             <div class="flex items-center gap-3">
-                                <span class="w-8 text-xs font-medium text-gray-500 shrink-0">{{ $day['label'] }}</span>
+                                <span class="w-10 text-sm font-medium text-gray-500 shrink-0">{{ $day['label'] }}</span>
                                 <div class="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden flex">
                                     <div class="h-full bg-blue-500" style="width: {{ $day['pee'] / $diaperMax * 100 }}%"></div>
                                     <div class="h-full bg-amber-600" style="width: {{ $day['poop'] / $diaperMax * 100 }}%"></div>
                                 </div>
-                                <span class="w-16 text-xs text-gray-600 text-right shrink-0 tabular-nums">{{ $day['pee'] }} + {{ $day['poop'] }}</span>
+                                <span class="w-20 text-sm text-gray-600 text-right shrink-0 tabular-nums">{{ $day['pee'] }} + {{ $day['poop'] }}</span>
                             </div>
                         @endforeach
                     </div>
                 </x-card>
 
                 <x-card class="p-6">
-                    <p class="font-semibold text-gray-800 mb-1">Feeding Activity</p>
-                    <p class="text-xs text-gray-400 mb-3">Bottle ounces · {{ $chartRangeLabel }}</p>
+                    <p class="font-semibold text-lg text-gray-800 mb-1">Feeding Activity</p>
+                    <p class="text-sm text-gray-400 mb-3">Bottle ounces · {{ $chartRangeLabel }}</p>
                     @php $feedMax = max(1, $feedTrend->pluck('oz')->max()); @endphp
-                    <div class="space-y-2.5">
+                    <div class="space-y-3">
                         @foreach ($feedTrend as $day)
                             <div class="flex items-center gap-3">
-                                <span class="w-8 text-xs font-medium text-gray-500 shrink-0">{{ $day['label'] }}</span>
+                                <span class="w-10 text-sm font-medium text-gray-500 shrink-0">{{ $day['label'] }}</span>
                                 <div class="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
                                     <div class="h-full rounded-full bg-amber-500" style="width: {{ $day['oz'] / $feedMax * 100 }}%"></div>
                                 </div>
-                                <span class="w-16 text-xs text-gray-600 text-right shrink-0 tabular-nums">{{ rtrim(rtrim(number_format($day['oz'], 1), '0'), '.') }} oz</span>
+                                <span class="w-20 text-sm text-gray-600 text-right shrink-0 tabular-nums">{{ rtrim(rtrim(number_format($day['oz'], 1), '0'), '.') }} oz</span>
                             </div>
                         @endforeach
                     </div>
