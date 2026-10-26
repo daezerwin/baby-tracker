@@ -84,3 +84,11 @@ document.addEventListener('alpine:init', () => {
         },
     });
 });
+
+// Makes the app installable as a PWA and shows public/offline.html instead
+// of the browser's error page when there's no connection. Browsers only
+// expose serviceWorker on HTTPS (or localhost), so this is a no-op on a
+// plain-HTTP deployment.
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}

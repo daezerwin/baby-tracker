@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#1d4ed8">
+        <title>Offline · Baby Tracker</title>
+        <style>
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1.5rem;
+                box-sizing: border-box;
+                background: #f9fbff;
+                color: #1f2937;
+                font-family: Figtree, ui-sans-serif, system-ui, -apple-system, sans-serif;
+                text-align: center;
+            }
+            svg { width: 3.5rem; height: 3.5rem; }
+            h1 { font-size: 1.25rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+            p { color: #6b7280; font-size: 0.9375rem; margin: 0 0 1.5rem; }
+            button {
+                font: inherit;
+                font-weight: 600;
+                font-size: 0.875rem;
+                color: #fff;
+                background: #1d4ed8;
+                border: 0;
+                border-radius: 0.75rem;
+                padding: 0.625rem 1.25rem;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="12" cy="12" r="12" fill="#1d4ed8" />
+                <path fill="#fbbf24" d="M12.868 4.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.454 1.405 1.02L12 17.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.651l-4.752-.381-1.831-4.401Z" />
+            </svg>
+            <h1>You're offline</h1>
+            <p>Baby Tracker needs a connection to load your entries.</p>
+            <button type="button" onclick="location.reload()">Try again</button>
+        </main>
+        <script>
+            window.addEventListener('online', () => location.reload());
+        </script>
+    </body>
+</html>
